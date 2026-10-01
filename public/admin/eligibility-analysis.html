@@ -1,0 +1,438 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eligibility Analysis â€” SOE Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <style>
+    :root { --sidebar-w:260px;--sidebar-bg:#0f172a;--primary:#3b82f6;--surface:#fff;--bg:#f1f5f9;--text:#1e293b;--text-muted:#64748b;--border:#e2e8f0;--success:#10b981;--danger:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.06);--radius:12px; }
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--sidebar-bg);z-index:1000;display:flex;flex-direction:column}
+    .sidebar-brand{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,0.06)}.sidebar-brand h2{color:white;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+    .sidebar-brand .brand-icon{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:10px;display:flex;align-items:center;justify-content:center}.sidebar-brand .brand-icon i{color:white;font-size:16px}
+    .sidebar-brand small{color:#94a3b8;font-size:12px;display:block;margin-top:4px;padding-left:46px}
+    .sidebar-nav{flex:1;overflow-y:auto;padding:16px 12px}.nav-section{margin-bottom:24px}.nav-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#475569;padding:0 12px;margin-bottom:8px}
+    .nav-link{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.2s;margin-bottom:2px}
+    .nav-link:hover{background:#1e293b;color:#cbd5e1}.nav-link.active{background:rgba(59,130,246,0.15);color:var(--primary)}.nav-link i{width:20px;text-align:center}
+    .sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06)}
+    .btn-logout{width:100%;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:transparent;color:#94a3b8;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-logout:hover{background:rgba(239,68,68,0.1);color:#f87171}
+    .main-content{margin-left:var(--sidebar-w);min-height:100vh}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}.topbar h1{font-size:20px;font-weight:700}
+    .content-area{padding:28px 32px; max-width: 1200px; margin: 0 auto;}
+    .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border); margin-bottom:20px;}
+    .card-header-custom{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .card-header-custom h3{font-size:15px;font-weight:600;margin:0}.card-body-custom{padding:24px}
+    
+    .form-label{font-size:13px;font-weight:600;margin-bottom:6px}
+    .form-select, .form-control{border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;margin-bottom:20px;width:100%}
+    .form-select:focus, .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1);outline:none}
+    
+    .btn-primary-btn{padding:12px 24px;border:none;border-radius:8px;background:var(--primary);color:white;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:all 0.2s}
+    .btn-primary-btn:hover{box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .btn-success-btn{padding:12px 24px;border:none;border-radius:8px;background:var(--success);color:white;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:all 0.2s}
+    .btn-success-btn:hover{box-shadow:0 4px 12px rgba(16,185,129,0.3)}
+    
+    .alert { border-radius: 10px; font-size: 14px; border: none; padding: 12px 16px; margin-bottom: 16px; }
+    .info-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; gap: 12px; }
+    .info-box i { color: var(--primary); font-size: 20px; margin-top: 2px; }
+    .info-box p { font-size: 13px; color: var(--text-muted); margin: 0; }
+    
+    /* Checkbox Grid */
+    .checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(100px, 1fr));gap:12px;margin-bottom:20px}
+    .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px}
+    .checkbox-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary)}
+
+    /* Analysis Results */
+    #analysisResults { display: none; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
+    .stat-card { background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+    .stat-card .val { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .stat-card .lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    
+    .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 30px; }
+    .table-custom { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    .table-custom th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 12px 16px; border-bottom: 1px solid var(--border); background: #f8fafc; text-align: left; }
+    .table-custom td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; text-align: left; }
+    .table-custom tr:hover { background: #f8fafc; }
+
+    .elig-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .elig-badge.green { background: #ecfdf5; color: #059669; }
+    .elig-badge.red { background: #fef2f2; color: #dc2626; }
+
+    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+
+    @media(max-width:768px){.sidebar{display:none}.main-content{margin-left:0}.stats-grid{grid-template-columns:1fr}}
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><h2><span class="brand-icon"><i class="fas fa-graduation-cap"></i></span>SOE Portal</h2><small>Examination Management</small></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section"><div class="nav-section-title">Main</div><a href="/admin/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a></div>
+      <div class="nav-section"><div class="nav-section-title">Examination</div>
+        <a href="/admin/academic-years" class="nav-link"><i class="fas fa-calendar-alt"></i> Academic Years</a>
+        <a href="/admin/exams" class="nav-link"><i class="fas fa-file-alt"></i> Exams</a>
+        <a href="/admin/subject-master" class="nav-link"><i class="fas fa-book"></i> Subject Master</a>
+        <a href="/admin/excel-upload" class="nav-link"><i class="fas fa-file-excel"></i> Excel Upload</a>
+        <a href="/admin/exam-data" class="nav-link"><i class="fas fa-database"></i> Exam Data</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Arrangement</div>
+        <a href="/admin/seating" class="nav-link"><i class="fas fa-chair"></i> Seating</a>
+        <a href="/admin/block-labels" class="nav-link"><i class="fas fa-tag"></i> Block Labels</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Eligibility</div>
+        <a href="/admin/eligibility-criteria" class="nav-link"><i class="fas fa-sliders-h"></i> Criteria</a>
+        <a href="/admin/eligibility-analysis" class="nav-link active"><i class="fas fa-chart-bar"></i> Analysis</a>
+        <a href="/admin/eligibility-override" class="nav-link"><i class="fas fa-user-shield"></i> Override</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Reports</div>
+        <a href="/admin/eligible-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Eligible Students Analysis</a>
+        <a href="/admin/hall-ticket-settings" class="nav-link"><i class="fas fa-clock"></i> Hall Ticket Period</a>
+        <a href="/admin/hall-ticket-generation" class="nav-link"><i class="fas fa-id-card"></i> Hall Ticket Generation</a>
+        <a href="/admin/block-report" class="nav-link"><i class="fas fa-clipboard-list"></i> Block Report</a>
+        <a href="/admin/audit-log" class="nav-link"><i class="fas fa-history"></i> Audit Log</a>
+      </div>
+    </nav>
+    <div class="sidebar-footer"><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button></div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar"><h1>Eligibility Analysis & Application</h1></div>
+    <div class="content-area">
+      <div id="alert-container"></div>
+      
+      <div class="card">
+        <div class="card-header-custom">
+          <h3><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px"></i> Config & Run Analysis</h3>
+        </div>
+        <div class="card-body-custom">
+          
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <p>Run a preview analysis to see how many students become eligible based on the criteria. Once satisfied, apply it to save to the database. Only students matching the selected Semesters and Programs will be evaluated.</p>
+          </div>
+
+          <form id="analysisForm">
+            <label class="form-label">Select Exam *</label>
+            <select id="examSelect" class="form-select" required onchange="onExamChange()"></select>
+
+            <div id="configSection" style="display:none;">
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">Minimum Attendance (%) *</label>
+                  <input type="number" id="minAtt" class="form-control" min="0" max="100" step="0.1" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Fees Required *</label>
+                  <select id="feesReq" class="form-select" required>
+                    <option value="Paid">Must be Paid</option>
+                    <option value="Any">Any (Ignore Fees)</option>
+                  </select>
+                </div>
+              </div>
+
+              <label class="form-label">Select Semesters *</label>
+              <div class="checkbox-grid" id="semGrid"></div>
+
+              <label class="form-label">Select Programs *</label>
+              <div class="checkbox-grid" id="progGrid"></div>
+              
+              <button type="submit" class="btn-primary-btn" id="analyzeBtn" style="margin-top: 10px;">
+                <i class="fas fa-search"></i> Run Analysis Preview
+              </button>
+            </div>
+            
+            <div id="emptyState" style="text-align:center; padding:30px; color:var(--text-muted);">
+              <i class="fas fa-arrow-up" style="font-size:24px; margin-bottom:10px;"></i>
+              <div>Please select an exam to load configuration.</div>
+            </div>
+          </form>
+
+          <!-- Results Section -->
+          <div id="analysisResults">
+            <div class="alert alert-warning" style="background:#fffbeb; color:#d97706; border: 1px solid #fcd34d;">
+              <i class="fas fa-exclamation-triangle"></i> Note: This is just a preview. No data has been modified yet. Scroll to the bottom to apply these changes.
+            </div>
+
+            <h4 class="section-title">Overall Summary</h4>
+            <div class="stats-grid">
+              <div class="stat-card"><div class="val text-primary" id="grandTotal">0</div><div class="lbl">Total Evaluated</div></div>
+              <div class="stat-card"><div class="val text-success" id="grandEligible">0</div><div class="lbl">Eligible</div></div>
+              <div class="stat-card"><div class="val text-danger" id="grandNotEligible">0</div><div class="lbl">Not Eligible</div></div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6">
+                <h4 class="section-title">Program-wise Analysis</h4>
+                <div class="table-container">
+                  <table class="table-custom">
+                    <thead><tr><th>Program</th><th>Total</th><th>Eligible</th><th>Not Eligible</th></tr></thead>
+                    <tbody id="programTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h4 class="section-title">Semester-wise Analysis</h4>
+                <div class="table-container">
+                  <table class="table-custom">
+                    <thead><tr><th>Semester</th><th>Total</th><th>Eligible</th><th>Not Eligible</th></tr></thead>
+                    <tbody id="semesterTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <h4 class="section-title">Semester + Program Matrix</h4>
+            <div class="table-container">
+              <table class="table-custom">
+                <thead><tr id="matrixHeader"></tr></thead>
+                <tbody id="matrixBody"></tbody>
+              </table>
+            </div>
+
+            <h4 class="section-title">Student-Level Analysis (Preview)</h4>
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+              <table class="table-custom">
+                <thead style="position: sticky; top: 0; z-index: 1;">
+                  <tr><th>Enrollment</th><th>Name</th><th>Sem</th><th>Prog</th><th>Att.</th><th>Fees</th><th>Result</th><th>Reason (If Not Eligible)</th></tr>
+                </thead>
+                <tbody id="studentTbody"></tbody>
+              </table>
+            </div>
+
+            <button type="button" class="btn-success-btn" id="applyBtn" onclick="applyEligibility()">
+              <i class="fas fa-check-double"></i> Apply Eligibility to Database
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    async function checkAuth() { try { const r = await fetch('/api/auth/me'); const d = await r.json(); if (!d.authenticated||d.role!=='ADMIN') window.location.href='/admin/login'; } catch { window.location.href='/admin/login'; } }
+    checkAuth();
+
+    function showAlert(msg, type = 'danger') { document.getElementById('alert-container').innerHTML = `<div class="alert alert-${type}">${msg}</div>`; window.scrollTo(0,0); setTimeout(() => document.getElementById('alert-container').innerHTML = '', 5000); }
+
+    async function loadExams() {
+      try {
+        const res = await fetch('/api/exams');
+        const data = await res.json();
+        const activeExams = (data.exams || []).filter(e => e.isActive);
+        document.getElementById('examSelect').innerHTML = '<option value="">Select Exam...</option>' + activeExams.map(e => `<option value="${e.id}">${e.name} (${e.academicYear?.name || ''})</option>`).join('');
+      } catch (e) { console.error(e); }
+    }
+    loadExams();
+
+    async function onExamChange() {
+      const examId = document.getElementById('examSelect').value;
+      const configSection = document.getElementById('configSection');
+      const emptyState = document.getElementById('emptyState');
+      document.getElementById('analysisResults').style.display = 'none';
+      
+      if (!examId) {
+        configSection.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      configSection.style.display = 'block';
+      emptyState.style.display = 'none';
+
+      try {
+        const criteriaRes = await fetch(`/api/eligibility/criteria/${examId}`);
+        const criteriaData = await criteriaRes.json();
+        document.getElementById('minAtt').value = criteriaData.criteria.minAttendancePercent || 0;
+        document.getElementById('feesReq').value = criteriaData.criteria.feesRequired || 'Any';
+
+        const dataRes = await fetch(`/api/exam-data/${examId}?limit=1`);
+        const data = await dataRes.json();
+        
+        const sems = data.filters?.semesters || [];
+        const progs = data.filters?.programs || [];
+
+        document.getElementById('semGrid').innerHTML = sems.map(s => `
+          <div class="checkbox-item"><input type="checkbox" id="sem-${s}" value="${s}" checked><label for="sem-${s}">Sem ${s}</label></div>
+        `).join('');
+
+        document.getElementById('progGrid').innerHTML = progs.map(p => `
+          <div class="checkbox-item"><input type="checkbox" id="prog-${p}" value="${p}" checked><label for="prog-${p}">${p}</label></div>
+        `).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    function getSelectedOptions() {
+      const semesters = [];
+      const programs = [];
+      document.querySelectorAll('#semGrid input:checked').forEach(c => semesters.push(parseInt(c.value)));
+      document.querySelectorAll('#progGrid input:checked').forEach(c => programs.push(c.value));
+      return { semesters, programs };
+    }
+
+    document.getElementById('analysisForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const examId = document.getElementById('examSelect').value;
+      const { semesters, programs } = getSelectedOptions();
+
+      if (semesters.length === 0 || programs.length === 0) {
+        return showAlert('Please select at least one semester and one program.');
+      }
+
+      const body = {
+        minAttendancePercent: parseFloat(document.getElementById('minAtt').value),
+        feesRequired: document.getElementById('feesReq').value,
+        semesters,
+        programs
+      };
+
+      const btn = document.getElementById('analyzeBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+
+      try {
+        const res = await fetch(`/api/eligibility/analyze/${examId}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          renderAnalysisResults(data, programs, semesters);
+          document.getElementById('analysisResults').style.display = 'block';
+        } else {
+          showAlert(data.error || 'Analysis failed.');
+        }
+      } catch { showAlert('Network error.'); }
+      
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-search"></i> Run Analysis Preview';
+    });
+
+    function renderAnalysisResults(data, programs, semesters) {
+      document.getElementById('grandTotal').textContent = data.grand.total;
+      document.getElementById('grandEligible').textContent = data.grand.eligible;
+      document.getElementById('grandNotEligible').textContent = data.grand.notEligible;
+
+      // Program-wise
+      const pBody = document.getElementById('programTbody');
+      pBody.innerHTML = Object.entries(data.programTotals).map(([p, v]) => `
+        <tr>
+          <td><strong>${p}</strong></td>
+          <td>${v.total}</td>
+          <td><span class="elig-badge green">${v.eligible}</span></td>
+          <td><span class="elig-badge red">${v.notEligible}</span></td>
+        </tr>
+      `).join('');
+
+      // Semester-wise
+      const sBody = document.getElementById('semesterTbody');
+      sBody.innerHTML = Object.entries(data.semesterTotals).map(([s, v]) => `
+        <tr>
+          <td><strong>Sem ${s}</strong></td>
+          <td>${v.total}</td>
+          <td><span class="elig-badge green">${v.eligible}</span></td>
+          <td><span class="elig-badge red">${v.notEligible}</span></td>
+        </tr>
+      `).join('');
+
+      // Matrix
+      const thead = document.getElementById('matrixHeader');
+      thead.innerHTML = `<th>Semester</th>` + programs.map(p => `<th>${p}</th>`).join('') + `<th>Sem Total</th>`;
+
+      const tbody = document.getElementById('matrixBody');
+      tbody.innerHTML = semesters.map(sem => {
+        let rowHtml = `<td><strong>Sem ${sem}</strong></td>`;
+        
+        programs.forEach(prog => {
+          const cell = data.matrix[sem][prog];
+          rowHtml += `<td>
+            <div>${cell.total} Total</div>
+            <div style="margin-top:4px;">
+              <span class="elig-badge green">${cell.eligible} E</span>
+              <span class="elig-badge red">${cell.notEligible} NE</span>
+            </div>
+          </td>`;
+        });
+
+        const semTotal = data.semesterTotals[sem];
+        rowHtml += `<td>
+          <div><strong>${semTotal.total} Total</strong></div>
+          <div style="margin-top:4px;">
+            <span class="elig-badge green">${semTotal.eligible} E</span>
+            <span class="elig-badge red">${semTotal.notEligible} NE</span>
+          </div>
+        </td>`;
+
+        return `<tr>${rowHtml}</tr>`;
+      }).join('');
+
+      // Student-Level
+      const stBody = document.getElementById('studentTbody');
+      stBody.innerHTML = data.studentAnalysis.map(s => {
+        const badge = s.result === 'Eligible' ? 'green' : 'red';
+        return `
+        <tr>
+          <td>${s.enrollmentNumber}</td>
+          <td>${s.name}</td>
+          <td>${s.semester}</td>
+          <td>${s.program}</td>
+          <td>${s.attendance}%</td>
+          <td>${s.fees}</td>
+          <td><span class="elig-badge ${badge}">${s.result}</span></td>
+          <td style="color:#ef4444; font-size:11px;">${s.reason}</td>
+        </tr>
+        `;
+      }).join('');
+    }
+
+    async function applyEligibility() {
+      const examId = document.getElementById('examSelect').value;
+      const { semesters, programs } = getSelectedOptions();
+
+      const body = {
+        minAttendancePercent: parseFloat(document.getElementById('minAtt').value),
+        feesRequired: document.getElementById('feesReq').value,
+        semesters,
+        programs
+      };
+
+      const btn = document.getElementById('applyBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+
+      try {
+        const res = await fetch(`/api/eligibility/apply/${examId}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showAlert(`Success! ${data.message}`, 'success');
+          setTimeout(() => { window.location.href = '/admin/eligibility-override'; }, 2500);
+        } else {
+          showAlert(data.error || 'Failed to apply.');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check-double"></i> Apply Eligibility to Database';
+        }
+      } catch {
+        showAlert('Network error.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-double"></i> Apply Eligibility to Database';
+      }
+    }
+
+    async function logout() { try { await fetch('/api/auth/logout',{method:'POST'}); } catch {} window.location.href='/admin/login'; }
+  </script>
+</body>
+</html>
+

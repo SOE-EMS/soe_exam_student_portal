@@ -1,0 +1,386 @@
+// Prisma Schema — Hall Ticket & Examination Management System
+// Database: Neon PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// USER & AUTHENTICATION
+// ──────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  password  String
+  role      String   @default("STUDENT")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  studentProfile         StudentProfile?
+  auditLogs              AuditLog[]
+  hallTicketGenerations  HallTicketGeneration[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model StudentProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  enrollmentNumber String   @unique
+  name             String
+  program          String
+  semester         Int
+  division         String?
+  photoUrl         String?
+  photoPublicId    String?  // Cloudinary public ID
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eligibilities Eligibility[]
+
+  @@index([enrollmentNumber])
+  @@index([program])
+  @@index([semester])
+}
+
+// ──────────────────────────────────────────────
+// ACADEMIC YEAR & EXAM
+// ──────────────────────────────────────────────
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  name      String   @unique  // e.g., "AY-202627(odd)", "AY-202627(even)"
+  startYear Int               // e.g., 2026
+  endYear   Int               // e.g., 2027
+  type      String            // "ODD" or "EVEN"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  exams Exam[]
+
+  @@index([isActive])
+}
+
+model Exam {
+  id             String     @id @default(cuid())
+  name           String                // e.g., "1st Internal Examination"
+  academicYearId String
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  academicYear       AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  semesters          ExamSemester[]
+  studentData        ExamStudentData[]
+  schedules          ExamSchedule[]
+  seatingArrangements SeatingArrangement[]
+  blockAssignments   BlockAssignment[]
+  eligibilityCriteria EligibilityCriteria?
+  eligibilities      Eligibility[]
+  hallTicketSettings     HallTicketSettings?
+  blockReports           BlockReportGeneration[]
+  hallTicketGenerations  HallTicketGeneration[]
+  eligibilityVersion Int        @default(1)
+
+  @@index([academicYearId])
+  @@index([isActive])
+}
+
+model ExamSemester {
+  id       String @id @default(cuid())
+  examId   String
+  semester Int
+
+  // Relations
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, semester])
+  @@index([examId])
+}
+
+// ──────────────────────────────────────────────
+// EXAM STUDENT DATA (from Excel upload)
+// ──────────────────────────────────────────────
+
+model ExamStudentData {
+  id               String   @id @default(cuid())
+  examId           String
+  academicYear     String
+  semester         Int
+  program          String
+  enrollmentNumber String
+  studentName      String
+  division         String?
+  attendancePercent Float?
+  feesStatus       String?  // "Paid" | "Unpaid"
+  studentEmailId   String?  // Student email from Excel upload
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  exam     Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  subjects StudentExamSubject[]
+
+  @@unique([examId, enrollmentNumber])
+  @@index([examId])
+  @@index([enrollmentNumber])
+  @@index([semester])
+  @@index([program])
+  @@index([division])
+}
+
+// ──────────────────────────────────────────────
+// SUBJECT MASTER
+// ──────────────────────────────────────────────
+
+model SubjectMaster {
+  id          String   @id @default(cuid())
+  subjectCode String   @unique
+  subjectName String
+  program     String?
+  semester    Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectCode])
+  @@index([program])
+}
+
+// ──────────────────────────────────────────────
+// EXAM SCHEDULE & SUBJECTS (dynamic from Excel)
+// ──────────────────────────────────────────────
+
+model ExamSchedule {
+  id          String   @id @default(cuid())
+  examId      String
+  examDate    DateTime           // Date of exam
+  examTime    String?            // e.g., "10:00 AM - 12:00 PM"
+  subjectCode String
+  subjectName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  exam     Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  subjects StudentExamSubject[]
+
+  @@unique([examId, examDate, subjectCode, examTime])
+  @@index([examId])
+  @@index([examDate])
+}
+
+model StudentExamSubject {
+  id                String @id @default(cuid())
+  examStudentDataId String
+  examScheduleId    String
+
+  // Relations
+  examStudentData ExamStudentData @relation(fields: [examStudentDataId], references: [id], onDelete: Cascade)
+  examSchedule    ExamSchedule    @relation(fields: [examScheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([examStudentDataId, examScheduleId])
+  @@index([examStudentDataId])
+  @@index([examScheduleId])
+}
+
+// ──────────────────────────────────────────────
+// SEATING ARRANGEMENT & BLOCK ASSIGNMENT
+// ──────────────────────────────────────────────
+
+model SeatingArrangement {
+  id                  String @id @default(cuid())
+  examId              String
+  blockNumber         Int
+  subjectBlock        Int      @default(0)
+  classroom           String
+  fromEnrollment      String
+  toEnrollment        String
+  blockCount          Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, blockNumber])
+  @@index([examId])
+}
+
+model BlockAssignment {
+  id               String @id @default(cuid())
+  examId           String
+  enrollmentNumber String
+  blockNumber      Int
+  classroom        String
+  createdAt        DateTime @default(now())
+
+  // Relations
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, enrollmentNumber])
+  @@index([examId])
+  @@index([enrollmentNumber])
+  @@index([blockNumber])
+}
+
+// ──────────────────────────────────────────────
+// ELIGIBILITY
+// ──────────────────────────────────────────────
+
+model EligibilityCriteria {
+  id                    String  @id @default(cuid())
+  examId                String  @unique
+  minAttendancePercent  Float   @default(0)
+  feesRequired          String  @default("Paid") // "Paid" | "Any"
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model Eligibility {
+  id                    String    @id @default(cuid())
+  examId                String
+  studentProfileId      String?
+  enrollmentNumber      String
+  calculatedEligibility String    @default("PENDING")
+  adminOverride         String?   // null means no override
+  finalEligibility      String    @default("PENDING")
+  overrideReason        String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  exam           Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([examId, enrollmentNumber])
+  @@index([examId])
+  @@index([enrollmentNumber])
+  @@index([finalEligibility])
+}
+
+// ──────────────────────────────────────────────
+// HALL TICKET SETTINGS
+// ──────────────────────────────────────────────
+
+model HallTicketSettings {
+  id            String    @id @default(cuid())
+  examId        String    @unique
+  availableFrom DateTime?
+  availableTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────
+// AUDIT LOG
+// ──────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String    // e.g., "Exam", "ExamStudentData", "Eligibility"
+  entityId  String?
+  details   String?   // JSON string with relevant info
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────────
+// BLOCK REPORT TRACKING
+// ──────────────────────────────────────────────
+
+model BlockReportGeneration {
+  id                 String   @id @default(cuid())
+  examId             String
+  examDate           DateTime
+  examTime           String?
+  eligibilityVersion Int
+  isOutdated         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  // Relations
+  exam               Exam                        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  students           BlockReportGeneratedStudent[]
+
+  @@index([examId])
+}
+
+model BlockReportGeneratedStudent {
+  id                String @id @default(cuid())
+  generationId      String
+  enrollmentNumber  String
+
+  // Relations
+  generation        BlockReportGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  
+  @@unique([generationId, enrollmentNumber])
+}
+
+// ──────────────────────────────────────────────
+// HALL TICKET GENERATION TRACKING
+// ──────────────────────────────────────────────
+
+model HallTicketGeneration {
+  id                String   @id @default(cuid())
+  examId            String
+  generatedBy       String?  // Admin userId
+  filterCriteria    String?  // JSON: {program, semester, division, enrollment}
+  totalStudents     Int      @default(0)
+  generatedCount    Int      @default(0)
+  skippedCount      Int      @default(0)
+  status            String   @default("COMPLETED") // "IN_PROGRESS" | "COMPLETED" | "FAILED"
+  dataVersion       Int      @default(1) // snapshot of exam.eligibilityVersion
+  isOutdated        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  // Relations
+  exam              Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [generatedBy], references: [id], onDelete: SetNull)
+  students          HallTicketGeneratedStudent[]
+
+  @@index([examId])
+  @@index([createdAt])
+}
+
+model HallTicketGeneratedStudent {
+  id               String @id @default(cuid())
+  generationId     String
+  enrollmentNumber String
+  dataHash         String? // hash of source data for stale detection
+
+  // Relations
+  generation       HallTicketGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@unique([generationId, enrollmentNumber])
+  @@index([enrollmentNumber])
+}

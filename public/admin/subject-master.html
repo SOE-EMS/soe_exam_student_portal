@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subject Master - Admin | PPSU</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .sidebar { background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 100%); width: 260px; height: 100vh; position: fixed; left: 0; top: 0; color: white; padding-top: 20px; z-index: 100; transition: all 0.3s; overflow-y: auto; display: flex; flex-direction: column; }
+    .main-content { margin-left: 260px; padding: 2rem; min-height: 100vh; transition: all 0.3s; }
+    .nav-link { display: flex; items-center: center; padding: 12px 24px; color: #cbd5e1; text-decoration: none; transition: all 0.2s; border-left: 4px solid transparent; }
+    .nav-link:hover, .nav-link.active { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; border-left-color: #3b82f6; }
+    .nav-link i { width: 24px; text-align: center; margin-right: 12px; }
+    .header-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px; }
+    .data-table th { background-color: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; padding: 12px 16px; text-align: left; }
+    .data-table td { padding: 16px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 0.875rem; }
+    .data-table tr:hover { background-color: #f8fafc; }
+    
+    .btn-primary { background-color: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 500; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-primary:hover { background-color: #2563eb; }
+    .btn-secondary { background-color: #e2e8f0; color: #475569; padding: 8px 16px; border-radius: 6px; font-weight: 500; transition: all 0.2s; border: none; cursor: pointer; }
+    .btn-secondary:hover { background-color: #cbd5e1; }
+    
+    .status-badge { padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .status-active { background-color: #dcfce7; color: #166534; }
+    .status-inactive { background-color: #fee2e2; color: #991b1b; }
+    
+    .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal.active { display: flex; }
+    .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 500px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 8px; }
+    .form-control { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.875rem; transition: all 0.2s; }
+    .form-control:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    
+    .empty-state { text-align: center; padding: 48px; color: #64748b; }
+    .empty-state i { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; }
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="px-6 mb-8 text-center">
+      <h2 class="text-2xl font-bold text-white tracking-wider">PPSU</h2>
+      <p class="text-blue-300 text-xs mt-1 uppercase tracking-widest">Exam Portal</p>
+    </div>
+    
+    <div class="mb-4 px-6 text-xs font-semibold text-blue-300 uppercase tracking-wider">Administration</div>
+    <a href="/admin/dashboard" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a>
+    <a href="/admin/academic-years" class="nav-link"><i class="fas fa-calendar-alt"></i> Academic Years</a>
+    <a href="/admin/exams" class="nav-link"><i class="fas fa-file-alt"></i> Exams</a>
+        <a href="/admin/subject-master" class="nav-link"><i class="fas fa-book"></i> Subject Master</a>
+    <a href="/admin/audit-log" class="nav-link"><i class="fas fa-history"></i> Audit Log</a>
+
+    <div class="mt-8 mb-4 px-6 text-xs font-semibold text-blue-300 uppercase tracking-wider">Examination</div>
+    <a href="/admin/subject-master" class="nav-link active"><i class="fas fa-book"></i> Subject Master</a>
+    <a href="/admin/excel-upload" class="nav-link"><i class="fas fa-upload"></i> Data Upload</a>
+    <a href="/admin/exam-data" class="nav-link"><i class="fas fa-users"></i> Exam Data</a>
+    <a href="/admin/seating" class="nav-link"><i class="fas fa-chair"></i> Seating Plan</a>
+    <a href="/admin/block-labels" class="nav-link"><i class="fas fa-door-open"></i> Block Labels</a>
+    <a href="/admin/block-report" class="nav-link"><i class="fas fa-file-signature"></i> Block Report</a>
+    
+    <div class="mt-8 mb-4 px-6 text-xs font-semibold text-blue-300 uppercase tracking-wider">Eligibility</div>
+    <a href="/admin/eligibility-criteria" class="nav-link"><i class="fas fa-cogs"></i> Criteria Settings</a>
+    <a href="/admin/eligibility-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Analysis</a>
+    <a href="/admin/eligibility-override" class="nav-link"><i class="fas fa-user-edit"></i> Manual Override</a>
+
+    <div class="mt-8 mb-4 px-6 text-xs font-semibold text-blue-300 uppercase tracking-wider">Reports</div>
+    <a href="/admin/eligible-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Eligible Students Analysis</a>
+    <a href="/admin/hall-ticket-settings" class="nav-link"><i class="fas fa-clock"></i> Hall Ticket Period</a>
+    <a href="/admin/hall-ticket-generation" class="nav-link"><i class="fas fa-print"></i> Generate Hall Tickets</a>
+
+    <div class="mt-auto w-full p-4 border-t border-slate-700 mt-8">
+      <button onclick="logout()" class="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded transition-colors text-sm flex items-center justify-center">
+        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-800">Subject Master</h1>
+        <p class="text-slate-500 mt-1">Manage global subject mappings for the examination system.</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/api/subjects/sample" download class="btn-secondary flex items-center shadow-sm justify-center whitespace-nowrap">
+          <i class="fas fa-download mr-2 text-blue-600"></i> Sample Excel
+        </a>
+        <button onclick="openUploadModal()" class="btn-secondary flex items-center shadow-sm justify-center whitespace-nowrap">
+          <i class="fas fa-file-excel mr-2 text-green-600"></i> Upload Excel
+        </button>
+        <button onclick="openModal()" class="btn-primary flex items-center shadow-md justify-center whitespace-nowrap">
+          <i class="fas fa-plus mr-2"></i> Add Subject
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="header-card">
+      <div class="flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="form-label">Search</label>
+          <div class="relative">
+            <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+            <input type="text" id="search" class="form-control pl-10" placeholder="Search code or name..." onkeyup="if(event.key === 'Enter') loadSubjects()">
+          </div>
+        </div>
+        
+        <div class="w-48">
+          <label class="form-label">Program</label>
+          <input type="text" id="filterProgram" class="form-control" placeholder="e.g. B.Tech" onkeyup="if(event.key === 'Enter') loadSubjects()">
+        </div>
+        
+        <div class="w-32">
+          <label class="form-label">Semester</label>
+          <input type="number" id="filterSemester" class="form-control" placeholder="e.g. 1" onkeyup="if(event.key === 'Enter') loadSubjects()">
+        </div>
+
+        <div class="w-40">
+          <label class="form-label">Status</label>
+          <select id="filterStatus" class="form-control" onchange="loadSubjects()">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        
+        <div>
+          <button onclick="loadSubjects()" class="btn-primary" style="height: 42px;"><i class="fas fa-filter"></i> Filter</button>
+          <button onclick="resetFilters()" class="btn-secondary ml-2" style="height: 42px;"><i class="fas fa-redo"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full data-table">
+          <thead>
+            <tr>
+              <th style="width: 15%">Subject Code</th>
+              <th style="width: 35%">Subject Name</th>
+              <th style="width: 15%">Program</th>
+              <th style="width: 10%">Semester</th>
+              <th style="width: 10%">Status</th>
+              <th style="width: 15%" class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable">
+            <tr>
+              <td colspan="6" class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading subjects...</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center" id="pagination">
+        <div class="text-sm text-slate-500">
+          Showing <span id="pageInfo" class="font-medium text-slate-700">0 of 0</span> subjects
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="changePage(-1)" id="btnPrev" class="px-3 py-1 border border-slate-300 rounded bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button onclick="changePage(1)" id="btnNext" class="px-3 py-1 border border-slate-300 rounded bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal" id="subjectModal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-slate-800" id="modalTitle">Add Subject</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <form id="subjectForm" onsubmit="saveSubject(event)">
+        <input type="hidden" id="subjectId">
+        
+        <div class="form-group">
+          <label class="form-label" for="subjectCode">Subject Code *</label>
+          <input type="text" id="subjectCode" class="form-control uppercase" required placeholder="e.g. SECV2330">
+          <p class="text-xs text-slate-500 mt-1">Must be unique. This is the identifier used in Excel uploads.</p>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="subjectName">Subject Name *</label>
+          <input type="text" id="subjectName" class="form-control" required placeholder="e.g. Computer Networks">
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="form-group mb-0">
+            <label class="form-label" for="program">Program</label>
+            <input type="text" id="program" class="form-control" placeholder="Optional">
+          </div>
+          
+          <div class="form-group mb-0">
+            <label class="form-label" for="semester">Semester</label>
+            <input type="number" id="semester" class="form-control" placeholder="Optional" min="1" max="10">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="flex items-center cursor-pointer">
+            <input type="checkbox" id="isActive" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked>
+            <span class="ml-2 text-sm font-medium text-slate-700">Active Subject</span>
+          </label>
+        </div>
+        
+        <div id="modalError" class="hidden p-3 bg-red-50 text-red-600 rounded text-sm mb-4"></div>
+        
+        <div class="flex justify-end gap-3 mt-8">
+          <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
+          <button type="submit" id="saveBtn" class="btn-primary">
+            <i class="fas fa-save mr-1"></i> Save Subject
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div class="modal" id="uploadModal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-slate-800">Upload Subjects</h3>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="mb-4 text-sm text-slate-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
+        <div class="flex justify-between items-center mb-2">
+          <p class="font-semibold text-blue-800">Expected Excel Format:</p>
+          <a href="/api/subjects/sample" class="text-blue-600 hover:text-blue-800 text-xs font-medium bg-blue-100 px-2 py-1 rounded transition-colors" download>
+            <i class="fas fa-download mr-1"></i> Download Sample
+          </a>
+        </div>
+        <table class="w-full text-left text-xs mt-2 bg-white">
+          <thead class="bg-blue-100 text-blue-800">
+            <tr><th class="p-1 border border-blue-200">Subject Code</th><th class="p-1 border border-blue-200">Subject Name</th><th class="p-1 border border-blue-200">Program</th><th class="p-1 border border-blue-200">Semester</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="p-1 border border-slate-200">SECV2330</td><td class="p-1 border border-slate-200">Computer Networks</td><td class="p-1 border border-slate-200">B.Tech</td><td class="p-1 border border-slate-200">3</td></tr>
+          </tbody>
+        </table>
+        <p class="mt-2 text-xs text-blue-700">* Subject Code and Subject Name are required. Program and Semester are optional.</p>
+      </div>
+
+      <form id="uploadForm" onsubmit="uploadSubjects(event)">
+        <div class="form-group mb-6">
+          <label class="form-label" for="excelFile">Select Excel File (.xlsx)</label>
+          <input type="file" id="excelFile" accept=".xlsx" class="form-control" required>
+        </div>
+        
+        <div id="uploadError" class="hidden p-3 bg-red-50 text-red-600 rounded text-sm mb-4 overflow-y-auto max-h-32"></div>
+        <div id="uploadSuccess" class="hidden p-3 bg-green-50 text-green-600 rounded text-sm mb-4"></div>
+        
+        <div class="flex justify-end gap-3 mt-4">
+          <button type="button" onclick="closeUploadModal()" class="btn-secondary">Cancel</button>
+          <button type="submit" id="uploadBtn" class="btn-primary">
+            <i class="fas fa-upload mr-1"></i> Upload Data
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Check auth
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (!data.authenticated || data.role !== 'ADMIN') {
+          window.location.href = '/admin/login';
+        } else {
+          loadSubjects();
+        }
+      } catch (e) {
+        window.location.href = '/admin/login';
+      }
+    }
+
+    async function loadSubjects() {
+      const search = document.getElementById('search').value;
+      const program = document.getElementById('filterProgram').value;
+      const semester = document.getElementById('filterSemester').value;
+      const status = document.getElementById('filterStatus').value;
+      
+      const tbody = document.getElementById('dataTable');
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-spinner fa-spin"></i><div>Loading...</div></td></tr>';
+      
+      try {
+        let url = `/api/subjects?page=${currentPage}&limit=15`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (program) url += `&program=${encodeURIComponent(program)}`;
+        if (semester) url += `&semester=${semester}`;
+        if (status) url += `&status=${status}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to load data');
+        
+        if (data.subjects.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><div>No subjects found.</div></td></tr>';
+        } else {
+          tbody.innerHTML = data.subjects.map(s => `
+            <tr>
+              <td><span class="font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded">${s.subjectCode}</span></td>
+              <td class="font-medium">${s.subjectName}</td>
+              <td>${s.program || '—'}</td>
+              <td>${s.semester || '—'}</td>
+              <td>
+                <span class="status-badge ${s.isActive ? 'status-active' : 'status-inactive'}">
+                  ${s.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td class="text-right">
+                <button onclick='editSubject(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800 p-2" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
+        
+        // Update pagination
+        totalPages = data.pagination.totalPages || 1;
+        document.getElementById('pageInfo').innerText = `${data.pagination.total}`;
+        
+        document.getElementById('btnPrev').disabled = currentPage <= 1;
+        document.getElementById('btnNext').disabled = currentPage >= totalPages;
+        
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fas fa-exclamation-triangle text-red-400"></i><div class="text-red-500">${error.message}</div></td></tr>`;
+      }
+    }
+
+    function changePage(delta) {
+      const newPage = currentPage + delta;
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        loadSubjects();
+      }
+    }
+
+    function resetFilters() {
+      document.getElementById('search').value = '';
+      document.getElementById('filterProgram').value = '';
+      document.getElementById('filterSemester').value = '';
+      document.getElementById('filterStatus').value = '';
+      currentPage = 1;
+      loadSubjects();
+    }
+
+    // Modal Logic
+    function openModal() {
+      document.getElementById('subjectForm').reset();
+      document.getElementById('subjectId').value = '';
+      document.getElementById('subjectCode').readOnly = false;
+      document.getElementById('subjectCode').classList.remove('bg-slate-100');
+      document.getElementById('modalTitle').innerText = 'Add Subject';
+      document.getElementById('modalError').classList.add('hidden');
+      document.getElementById('subjectModal').classList.add('active');
+    }
+
+    function editSubject(subject) {
+      document.getElementById('subjectId').value = subject.id;
+      document.getElementById('subjectCode').value = subject.subjectCode;
+      document.getElementById('subjectCode').readOnly = true;
+      document.getElementById('subjectCode').classList.add('bg-slate-100');
+      document.getElementById('subjectName').value = subject.subjectName;
+      document.getElementById('program').value = subject.program || '';
+      document.getElementById('semester').value = subject.semester || '';
+      document.getElementById('isActive').checked = subject.isActive;
+      
+      document.getElementById('modalTitle').innerText = 'Edit Subject';
+      document.getElementById('modalError').classList.add('hidden');
+      document.getElementById('subjectModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('subjectModal').classList.remove('active');
+    }
+
+    async function saveSubject(e) {
+      e.preventDefault();
+      const id = document.getElementById('subjectId').value;
+      const btn = document.getElementById('saveBtn');
+      const errorDiv = document.getElementById('modalError');
+      
+      const payload = {
+        subjectCode: document.getElementById('subjectCode').value.toUpperCase(),
+        subjectName: document.getElementById('subjectName').value,
+        program: document.getElementById('program').value,
+        semester: document.getElementById('semester').value,
+        isActive: document.getElementById('isActive').checked
+      };
+
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+        errorDiv.classList.add('hidden');
+        
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/subjects/${id}` : '/api/subjects';
+        
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to save subject');
+        
+        closeModal();
+        loadSubjects();
+      } catch (err) {
+        errorDiv.innerText = err.message;
+        errorDiv.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-1"></i> Save Subject';
+      }
+    }
+
+    function openUploadModal() {
+      document.getElementById('uploadForm').reset();
+      document.getElementById('uploadError').classList.add('hidden');
+      document.getElementById('uploadSuccess').classList.add('hidden');
+      document.getElementById('uploadModal').classList.add('active');
+    }
+
+    function closeUploadModal() {
+      document.getElementById('uploadModal').classList.remove('active');
+    }
+
+    async function uploadSubjects(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('excelFile');
+      if (!fileInput.files || fileInput.files.length === 0) return;
+
+      const btn = document.getElementById('uploadBtn');
+      const errorDiv = document.getElementById('uploadError');
+      const successDiv = document.getElementById('uploadSuccess');
+      
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Uploading...';
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        
+        const res = await fetch('/api/subjects/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          let errStr = data.error || 'Upload failed';
+          if (data.rowErrors && data.rowErrors.length > 0) {
+            errStr += '<br>' + data.rowErrors.join('<br>');
+          }
+          throw new Error(errStr);
+        }
+        
+        successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Successfully processed ${data.stats.total} rows. (Added: ${data.stats.added}, Updated: ${data.stats.updated})`;
+        successDiv.classList.remove('hidden');
+        
+        loadSubjects();
+        setTimeout(closeUploadModal, 3000);
+      } catch (err) {
+        errorDiv.innerHTML = err.message;
+        errorDiv.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload mr-1"></i> Upload Data';
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/admin/login';
+    }
+
+    window.onload = checkAuth;
+  </script>
+</body>
+</html>

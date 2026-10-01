@@ -1,0 +1,38 @@
+{
+  "name": "soe-student-portal",
+  "version": "1.0.0",
+  "description": "Hall Ticket & Examination Management System",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:studio": "npx prisma studio",
+    "prisma:migrate": "npx prisma migrate dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.11.0",
+    "connect-pg-simple": "^10.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0",
+    "pdfkit": "^0.20.2",
+    "sharp": "^0.35.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

@@ -1,0 +1,545 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard â€” SOE Examination Portal</title>
+  <meta name="description" content="Admin dashboard for Hall Ticket & Examination Management System">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-w: 260px;
+      --sidebar-bg: #0f172a;
+      --sidebar-hover: #1e293b;
+      --sidebar-active: rgba(59,130,246,0.15);
+      --sidebar-text: #94a3b8;
+      --sidebar-text-active: #ffffff;
+      --primary: #3b82f6;
+      --primary-dark: #1e40af;
+      --surface: #ffffff;
+      --bg: #f1f5f9;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #06b6d4;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.07);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* â”€â”€â”€ SIDEBAR â”€â”€â”€ */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-brand {
+      padding: 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar-brand h2 {
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-brand .brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), #818cf8);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand .brand-icon i { color: white; font-size: 16px; }
+    .sidebar-brand small { color: var(--sidebar-text); font-size: 12px; display: block; margin-top: 4px; padding-left: 46px; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 16px 12px; }
+
+    .nav-section { margin-bottom: 24px; }
+    .nav-section-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: #475569; padding: 0 12px; margin-bottom: 8px;
+    }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 8px; color: var(--sidebar-text);
+      text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: all 0.2s ease; margin-bottom: 2px;
+    }
+
+    .nav-link:hover { background: var(--sidebar-hover); color: #cbd5e1; }
+    .nav-link.active { background: var(--sidebar-active); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 15px; }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .btn-logout {
+      width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; background: transparent; color: var(--sidebar-text);
+      font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+    }
+
+    .btn-logout:hover { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.2); }
+
+    /* â”€â”€â”€ MAIN CONTENT â”€â”€â”€ */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .topbar h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+    .topbar .badge-env {
+      font-size: 11px; padding: 4px 10px; border-radius: 20px;
+      background: #ecfdf5; color: #059669; font-weight: 600;
+    }
+
+    .content-area { padding: 28px 32px; }
+
+    /* â”€â”€â”€ STAT CARDS â”€â”€â”€ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 16px;
+      transition: all 0.25s ease;
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .stat-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 18px;
+    }
+
+    .stat-icon.blue { background: #eff6ff; color: var(--primary); }
+    .stat-icon.green { background: #ecfdf5; color: var(--success); }
+    .stat-icon.red { background: #fef2f2; color: var(--danger); }
+    .stat-icon.amber { background: #fffbeb; color: var(--warning); }
+    .stat-icon.cyan { background: #ecfeff; color: var(--info); }
+    .stat-icon.purple { background: #f5f3ff; color: #8b5cf6; }
+    .stat-icon.indigo { background: #eef2ff; color: #6366f1; }
+
+    .stat-info { flex: 1; }
+    .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.2; margin-top: 4px; }
+
+    /* â”€â”€â”€ QUICK ACTIONS â”€â”€â”€ */
+    .section-title {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .action-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      text-decoration: none; color: var(--text);
+      display: flex; align-items: center; gap: 14px;
+      transition: all 0.25s ease; cursor: pointer;
+    }
+
+    .action-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+
+    .action-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+
+    .action-card h3 { font-size: 14px; font-weight: 600; margin: 0; }
+    .action-card p { font-size: 12px; color: var(--text-muted); margin: 2px 0 0; }
+
+    /* â”€â”€â”€ ACTIVITY TABLE â”€â”€â”€ */
+    .activity-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .activity-card .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px; font-weight: 600;
+    }
+
+    .activity-list { list-style: none; padding: 0; margin: 0; }
+
+    .activity-item {
+      padding: 12px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: center; gap: 12px;
+      font-size: 13px;
+    }
+
+    .activity-item:last-child { border-bottom: none; }
+
+    .activity-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .activity-dot.blue { background: var(--primary); }
+    .activity-dot.green { background: var(--success); }
+    .activity-dot.amber { background: var(--warning); }
+
+    .activity-time { color: var(--text-muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+
+    .empty-state {
+      text-align: center; padding: 40px; color: var(--text-muted);
+    }
+
+    .empty-state i { font-size: 32px; margin-bottom: 12px; display: block; }
+
+    /* â”€â”€â”€ MOBILE TOGGLE â”€â”€â”€ */
+    .sidebar-toggle {
+      display: none; background: none; border: none;
+      font-size: 22px; color: var(--text); cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .sidebar-toggle { display: block; }
+      .content-area { padding: 20px 16px; }
+      .topbar { padding: 12px 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .actions-grid { grid-template-columns: 1fr; }
+    }
+
+    /* â”€â”€â”€ SKELETON LOADER â”€â”€â”€ */
+    .skeleton {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h2>
+        <span class="brand-icon"><i class="fas fa-graduation-cap"></i></span>
+        SOE Portal
+      </h2>
+      <small>Examination Management</small>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">Main</div>
+        <a href="/admin/dashboard" class="nav-link active"><i class="fas fa-th-large"></i> Dashboard</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Examination</div>
+        <a href="/admin/academic-years" class="nav-link"><i class="fas fa-calendar-alt"></i> Academic Years</a>
+        <a href="/admin/exams" class="nav-link"><i class="fas fa-file-alt"></i> Exams</a>
+        <a href="/admin/subject-master" class="nav-link"><i class="fas fa-book"></i> Subject Master</a>
+        <a href="/admin/excel-upload" class="nav-link"><i class="fas fa-file-excel"></i> Excel Upload</a>
+        <a href="/admin/exam-data" class="nav-link"><i class="fas fa-database"></i> Exam Data</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Arrangement</div>
+        <a href="/admin/seating" class="nav-link"><i class="fas fa-chair"></i> Seating</a>
+        <a href="/admin/block-labels" class="nav-link"><i class="fas fa-tag"></i> Block Labels</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Eligibility</div>
+        <a href="/admin/eligibility-criteria" class="nav-link"><i class="fas fa-sliders-h"></i> Criteria</a>
+        <a href="/admin/eligibility-analysis" class="nav-link"><i class="fas fa-chart-bar"></i> Analysis</a>
+        <a href="/admin/eligibility-override" class="nav-link"><i class="fas fa-user-shield"></i> Override</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Reports</div>
+        <a href="/admin/eligible-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Eligible Students Analysis</a>
+        <a href="/admin/hall-ticket-settings" class="nav-link"><i class="fas fa-clock"></i> Hall Ticket Period</a>
+        <a href="/admin/hall-ticket-generation" class="nav-link"><i class="fas fa-id-card"></i> Hall Ticket Generation</a>
+        <a href="/admin/block-report" class="nav-link"><i class="fas fa-clipboard-list"></i> Block Report</a>
+        <a href="/admin/reports" class="nav-link"><i class="fas fa-download"></i> Downloads</a>
+        <a href="/admin/audit-log" class="nav-link"><i class="fas fa-history"></i> Audit Log</a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="logoutBtn">
+        <i class="fas fa-sign-out-alt"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <h1>Dashboard</h1>
+      </div>
+      <span class="badge-env">â— Online</span>
+    </div>
+
+    <div class="content-area">
+      <!-- STAT CARDS -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Total Students</div>
+            <div class="stat-value" id="stat-students"><span class="skeleton" style="width:60px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="fas fa-file-alt"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Total Exams</div>
+            <div class="stat-value" id="stat-exams"><span class="skeleton" style="width:40px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Eligible</div>
+            <div class="stat-value" id="stat-eligible"><span class="skeleton" style="width:50px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Not Eligible</div>
+            <div class="stat-value" id="stat-not-eligible"><span class="skeleton" style="width:50px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber"><i class="fas fa-th"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Total Blocks</div>
+            <div class="stat-value" id="stat-blocks"><span class="skeleton" style="width:40px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon cyan"><i class="fas fa-id-card"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Hall Tickets</div>
+            <div class="stat-value" id="stat-hall-tickets"><span class="skeleton" style="width:40px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon indigo"><i class="fas fa-clipboard-list"></i></div>
+          <div class="stat-info">
+            <div class="stat-label">Block Reports</div>
+            <div class="stat-value" id="stat-block-reports"><span class="skeleton" style="width:40px;height:28px;display:inline-block"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <div class="section-title"><i class="fas fa-bolt" style="color:var(--warning)"></i> Quick Actions</div>
+      <div class="actions-grid">
+        <a href="/admin/academic-years" class="action-card">
+          <div class="action-icon" style="background:#eff6ff;color:var(--primary)"><i class="fas fa-calendar-plus"></i></div>
+          <div><h3>Academic Year</h3><p>Create / manage years</p></div>
+        </a>
+        <a href="/admin/exams" class="action-card">
+          <div class="action-icon" style="background:#f5f3ff;color:#8b5cf6"><i class="fas fa-plus-circle"></i></div>
+          <div><h3>Create Exam</h3><p>New examination</p></div>
+        </a>
+        <a href="/admin/excel-upload" class="action-card">
+          <div class="action-icon" style="background:#ecfdf5;color:var(--success)"><i class="fas fa-file-upload"></i></div>
+          <div><h3>Upload Data</h3><p>Excel student data</p></div>
+        </a>
+        <a href="/admin/seating" class="action-card">
+          <div class="action-icon" style="background:#fffbeb;color:var(--warning)"><i class="fas fa-chair"></i></div>
+          <div><h3>Seating</h3><p>Block arrangement</p></div>
+        </a>
+        <a href="/admin/eligibility-analysis" class="action-card">
+          <div class="action-icon" style="background:#ecfeff;color:var(--info)"><i class="fas fa-chart-pie"></i></div>
+          <div><h3>Eligibility</h3><p>Analysis & apply</p></div>
+        </a>
+        <a href="/admin/reports" class="action-card">
+          <div class="action-icon" style="background:#eef2ff;color:#6366f1"><i class="fas fa-download"></i></div>
+          <div><h3>Reports</h3><p>Hall tickets & reports</p></div>
+        </a>
+      </div>
+
+      <!-- RECENT ACTIVITY -->
+      <div class="section-title"><i class="fas fa-history" style="color:var(--text-muted)"></i> Recent Activity</div>
+      <div class="activity-card">
+        <div class="card-header">Activity Log</div>
+        <ul class="activity-list" id="activityList">
+          <li class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <div>Loading activity...</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auth check
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (!data.authenticated || data.role !== 'ADMIN') {
+          window.location.href = '/admin/login';
+        }
+      } catch { window.location.href = '/admin/login'; }
+    }
+    checkAuth();
+
+    // Load stats
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/dashboard/stats');
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+
+        document.getElementById('stat-students').textContent = data.totalStudents || 0;
+        document.getElementById('stat-exams').textContent = data.totalExams || 0;
+        document.getElementById('stat-eligible').textContent = data.eligibleStudents || 0;
+        document.getElementById('stat-not-eligible').textContent = data.notEligibleStudents || 0;
+        document.getElementById('stat-blocks').textContent = data.totalBlocks || 0;
+        document.getElementById('stat-hall-tickets').textContent = data.hallTicketsGenerated || 0;
+        document.getElementById('stat-block-reports').textContent = data.blockReportsGenerated || 0;
+      } catch {
+        document.querySelectorAll('.stat-value').forEach(el => { el.textContent = 'â€”'; });
+      }
+    }
+    loadStats();
+
+    // Load activity
+    async function loadActivity() {
+      try {
+        const res = await fetch('/api/admin/dashboard/activity');
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const list = document.getElementById('activityList');
+
+        if (!data.activities || data.activities.length === 0) {
+          list.innerHTML = '<li class="empty-state"><i class="fas fa-inbox"></i><div>No recent activity</div></li>';
+          return;
+        }
+
+        list.innerHTML = data.activities.map(a => {
+          const time = new Date(a.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+          const dotClass = a.action.includes('LOGIN') ? 'blue' : a.action.includes('UPLOAD') ? 'amber' : 'green';
+          return `<li class="activity-item">
+            <span class="activity-dot ${dotClass}"></span>
+            <span>${a.action.replace(/_/g, ' ')}</span>
+            <span class="activity-time">${time}</span>
+          </li>`;
+        }).join('');
+      } catch {
+        document.getElementById('activityList').innerHTML = '<li class="empty-state"><i class="fas fa-inbox"></i><div>No activity data</div></li>';
+      }
+    }
+    loadActivity();
+
+    // Sidebar toggle (mobile)
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+      } catch {}
+      window.location.href = '/admin/login';
+    });
+
+    // Active nav highlight
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === currentPath);
+    });
+  </script>
+</body>
+</html>
+

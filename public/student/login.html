@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Login — SOE Examination Portal</title>
+  <meta name="description" content="Student login for Hall Ticket & Examination Management System">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --accent: #06b6d4;
+      --surface: #ffffff;
+      --bg: #f0f4f8;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-lg: 0 12px 40px rgba(30, 64, 175, 0.1);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 460px;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 48px 40px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 8px 24px rgba(6, 182, 212, 0.2);
+    }
+
+    .logo-icon svg {
+      width: 32px;
+      height: 32px;
+      fill: white;
+    }
+
+    .logo-section h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 4px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-section p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s ease;
+      background: #f8fafc;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: white;
+      outline: none;
+    }
+
+    .btn-primary-custom {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-primary-custom:hover {
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary-custom:active { transform: translateY(0); }
+    .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .tab-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      font-weight: 600;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .admin-link {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .admin-link a {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .admin-link a:hover {
+      color: var(--primary);
+      text-decoration: underline;
+    }
+
+    .alert {
+      border-radius: 10px;
+      font-size: 14px;
+      border: none;
+      padding: 12px 16px;
+    }
+
+    .alert-danger { background: #fef2f2; color: #991b1b; }
+    .alert-success { background: #f0fdf4; color: #166534; }
+    .alert-info { background: #eff6ff; color: #1e40af; }
+
+    .info-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-card .label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .info-card .value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .spinner-border-sm {
+      width: 18px;
+      height: 18px;
+      border-width: 2px;
+    }
+
+    @media (max-width: 480px) {
+      .login-card { padding: 32px 24px; }
+    }
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </div>
+        <h1>Student Portal</h1>
+        <p>School of Engineering</p>
+      </div>
+
+      <div id="alert-container"></div>
+
+      <!-- Tabs -->
+      <div class="tab-buttons">
+        <button class="tab-btn active" data-tab="login" id="tab-login-btn">Login</button>
+        <button class="tab-btn" data-tab="register" id="tab-register-btn">Register</button>
+      </div>
+
+      <!-- Login Tab -->
+      <div class="tab-content active" id="tab-login">
+        <form id="loginForm" novalidate>
+          <div class="mb-3">
+            <label for="login-enrollment" class="form-label">Enrollment Number</label>
+            <input type="text" class="form-control" id="login-enrollment"
+                   placeholder="e.g., 24CE001" required>
+          </div>
+          <div class="mb-4">
+            <label for="login-password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="login-password"
+                   placeholder="Enter password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn-primary-custom" id="loginBtn">Sign In</button>
+        </form>
+      </div>
+
+      <!-- Register Tab -->
+      <div class="tab-content" id="tab-register">
+        <!-- Step 1: Verify Enrollment -->
+        <div id="register-step1">
+          <form id="verifyForm" novalidate>
+            <div class="mb-4">
+              <label for="reg-enrollment" class="form-label">Enrollment Number</label>
+              <input type="text" class="form-control" id="reg-enrollment"
+                     placeholder="e.g., 24CE001" required>
+              <small class="text-muted mt-1 d-block">Enter the enrollment number provided by your institution.</small>
+            </div>
+            <button type="submit" class="btn-primary-custom" id="verifyBtn">Verify Enrollment</button>
+          </form>
+        </div>
+
+        <!-- Step 2: Registration Form (shown after verification) -->
+        <div id="register-step2" style="display: none;">
+          <div class="info-card mb-3">
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="label">Name</div>
+                <div class="value" id="reg-name-display">—</div>
+              </div>
+              <div class="col-6">
+                <div class="label">Enrollment</div>
+                <div class="value" id="reg-enroll-display">—</div>
+              </div>
+              <div class="col-6 mt-2">
+                <div class="label">Program</div>
+                <div class="value" id="reg-program-display">—</div>
+              </div>
+              <div class="col-6 mt-2">
+                <div class="label">Semester</div>
+                <div class="value" id="reg-semester-display">—</div>
+              </div>
+            </div>
+          </div>
+
+          <form id="registerForm" novalidate>
+            <div class="mb-3">
+              <label for="reg-photo" class="form-label">Upload Photo</label>
+              <input type="file" class="form-control" id="reg-photo"
+                     accept="image/jpeg,image/png,image/jpg" required>
+              <small class="text-muted mt-1 d-block">JPG/PNG, max 2MB, passport-size recommended.</small>
+            </div>
+            <div class="mb-3">
+              <label for="reg-password" class="form-label">Create Password</label>
+              <input type="password" class="form-control" id="reg-password"
+                     placeholder="Min 8 characters" required minlength="8" autocomplete="new-password">
+            </div>
+            <div class="mb-4">
+              <label for="reg-confirm-password" class="form-label">Confirm Password</label>
+              <input type="password" class="form-control" id="reg-confirm-password"
+                     placeholder="Re-enter password" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn-primary-custom" id="registerBtn">Create Account</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="admin-link">
+        <a href="/admin/login">← Admin Portal</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        alertContainer.innerHTML = '';
+      });
+    });
+
+    const alertContainer = document.getElementById('alert-container');
+
+    function showAlert(message, type = 'danger') {
+      alertContainer.innerHTML = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+    }
+
+    // Student Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertContainer.innerHTML = '';
+      const enrollment = document.getElementById('login-enrollment').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!enrollment || !password) {
+        showAlert('Please enter enrollment number and password.');
+        return;
+      }
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Signing in...';
+
+      try {
+        const res = await fetch('/api/auth/student/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enrollmentNumber: enrollment, password }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.href = '/student/dashboard';
+        } else {
+          showAlert(data.error || 'Invalid credentials.');
+        }
+      } catch (err) {
+        showAlert('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+      }
+    });
+
+    // Step 1: Verify Enrollment
+    let verifiedStudentData = null;
+
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertContainer.innerHTML = '';
+      const enrollment = document.getElementById('reg-enrollment').value.trim();
+
+      if (!enrollment) {
+        showAlert('Please enter your enrollment number.');
+        return;
+      }
+
+      const btn = document.getElementById('verifyBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verifying...';
+
+      try {
+        const res = await fetch('/api/auth/student/verify-enrollment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enrollmentNumber: enrollment }),
+        });
+        const data = await res.json();
+
+        if (res.ok && data.verified) {
+          verifiedStudentData = data.student;
+          document.getElementById('reg-name-display').textContent = data.student.name;
+          document.getElementById('reg-enroll-display').textContent = data.student.enrollmentNumber;
+          document.getElementById('reg-program-display').textContent = data.student.program;
+          document.getElementById('reg-semester-display').textContent = 'Sem ' + data.student.semester;
+          document.getElementById('register-step1').style.display = 'none';
+          document.getElementById('register-step2').style.display = 'block';
+          showAlert('Enrollment verified! Complete registration below.', 'success');
+        } else {
+          showAlert(data.error || 'Enrollment number not found in admin data.');
+        }
+      } catch (err) {
+        showAlert('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Verify Enrollment';
+      }
+    });
+
+    // Step 2: Register
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertContainer.innerHTML = '';
+
+      const password = document.getElementById('reg-password').value;
+      const confirmPassword = document.getElementById('reg-confirm-password').value;
+      const photoFile = document.getElementById('reg-photo').files[0];
+
+      if (!photoFile) {
+        showAlert('Please upload your photo.');
+        return;
+      }
+      if (photoFile.size > 2 * 1024 * 1024) {
+        showAlert('Photo must be under 2MB.');
+        return;
+      }
+      if (password.length < 8) {
+        showAlert('Password must be at least 8 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        showAlert('Passwords do not match.');
+        return;
+      }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creating account...';
+
+      try {
+        const formData = new FormData();
+        formData.append('enrollmentNumber', verifiedStudentData.enrollmentNumber);
+        formData.append('password', password);
+        formData.append('photo', photoFile);
+
+        const res = await fetch('/api/auth/student/register', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('Account created successfully! You can now login.', 'success');
+          setTimeout(() => {
+            document.getElementById('tab-login-btn').click();
+          }, 2000);
+        } else {
+          showAlert(data.error || 'Registration failed.');
+        }
+      } catch (err) {
+        showAlert('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account';
+      }
+    });
+  </script>
+</body>
+</html>

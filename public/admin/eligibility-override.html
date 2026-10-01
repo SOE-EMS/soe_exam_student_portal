@@ -1,0 +1,361 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eligibility Override â€” SOE Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <style>
+    :root { --sidebar-w:260px;--sidebar-bg:#0f172a;--primary:#3b82f6;--surface:#fff;--bg:#f1f5f9;--text:#1e293b;--text-muted:#64748b;--border:#e2e8f0;--success:#10b981;--danger:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.06);--radius:12px; }
+    *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--sidebar-bg);z-index:1000;display:flex;flex-direction:column}
+    .sidebar-brand{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,0.06)}.sidebar-brand h2{color:white;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+    .sidebar-brand .brand-icon{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#818cf8);border-radius:10px;display:flex;align-items:center;justify-content:center}.sidebar-brand .brand-icon i{color:white;font-size:16px}
+    .sidebar-brand small{color:#94a3b8;font-size:12px;display:block;margin-top:4px;padding-left:46px}
+    .sidebar-nav{flex:1;overflow-y:auto;padding:16px 12px}.nav-section{margin-bottom:24px}.nav-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#475569;padding:0 12px;margin-bottom:8px}
+    .nav-link{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#94a3b8;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.2s;margin-bottom:2px}
+    .nav-link:hover{background:#1e293b;color:#cbd5e1}.nav-link.active{background:rgba(59,130,246,0.15);color:var(--primary)}.nav-link i{width:20px;text-align:center}
+    .sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06)}
+    .btn-logout{width:100%;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:transparent;color:#94a3b8;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-logout:hover{background:rgba(239,68,68,0.1);color:#f87171}
+    .main-content{margin-left:var(--sidebar-w);min-height:100vh}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}.topbar h1{font-size:20px;font-weight:700}
+    .content-area{padding:28px 32px;}
+    .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:20px}
+    
+    .filter-section { padding: 20px; border-bottom: 1px solid var(--border); background: #f8fafc; border-radius: var(--radius) var(--radius) 0 0; display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
+    .filter-input { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; transition: all 0.2s; min-width: 150px; }
+    .filter-input:focus { border-color: var(--primary); }
+    .btn-outline{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--text);font-size:13px;font-weight:500;cursor:pointer; height: 38px;}
+    
+    .table-responsive { overflow-x: auto; min-height: 400px; }
+    .table-custom { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    .table-custom th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 14px 16px; border-bottom: 1px solid var(--border); background: white; text-align: left; position: sticky; top: 0; z-index: 10; }
+    .table-custom td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .table-custom tr:hover { background: #f8fafc; }
+    
+    .btn-sm{padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:white;}
+    .btn-sm.edit:hover{border-color:var(--primary);color:var(--primary)}
+    
+    .pagination-bar { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 0 0 var(--radius) var(--radius); }
+    .page-info { font-size: 13px; color: var(--text-muted); }
+    .page-controls { display: flex; gap: 8px; }
+    .btn-page { padding: 6px 12px; border: 1px solid var(--border); background: white; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-page:hover:not(:disabled) { background: #f8fafc; }
+    .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .alert { border-radius: 10px; font-size: 14px; border: none; padding: 12px 16px; margin-bottom: 16px; }
+    .empty-state { text-align: center; padding: 48px; color: var(--text-muted); }
+    .empty-state i { font-size: 32px; margin-bottom: 12px; display: block; }
+    
+    .elig-badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .elig-badge.ELIGIBLE { background: #ecfdf5; color: #059669; }
+    .elig-badge.NOT_ELIGIBLE { background: #fef2f2; color: #dc2626; }
+    .elig-badge.PENDING { background: #f1f5f9; color: #64748b; }
+
+    /* Override Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:2000;display:none;align-items:center;justify-content:center}
+    .modal-overlay.show{display:flex}
+    .modal-box{background:white;border-radius:16px;padding:28px;width:440px;max-width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+    .modal-box h2{font-size:18px;font-weight:700;margin-bottom:20px}
+    .form-control, .form-select{border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;margin-bottom:16px;width:100%}
+    .form-control:focus, .form-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1);outline:none}
+    .modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+    .btn-cancel{padding:10px 20px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;cursor:pointer}
+    .btn-submit{padding:10px 20px;border:none;border-radius:8px;background:var(--primary);color:white;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+    
+    @media(max-width:768px){.sidebar{display:none}.main-content{margin-left:0}}
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><h2><span class="brand-icon"><i class="fas fa-graduation-cap"></i></span>SOE Portal</h2><small>Examination Management</small></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section"><div class="nav-section-title">Main</div><a href="/admin/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a></div>
+      <div class="nav-section"><div class="nav-section-title">Examination</div>
+        <a href="/admin/academic-years" class="nav-link"><i class="fas fa-calendar-alt"></i> Academic Years</a>
+        <a href="/admin/exams" class="nav-link"><i class="fas fa-file-alt"></i> Exams</a>
+        <a href="/admin/subject-master" class="nav-link"><i class="fas fa-book"></i> Subject Master</a>
+        <a href="/admin/excel-upload" class="nav-link"><i class="fas fa-file-excel"></i> Excel Upload</a>
+        <a href="/admin/exam-data" class="nav-link"><i class="fas fa-database"></i> Exam Data</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Arrangement</div>
+        <a href="/admin/seating" class="nav-link"><i class="fas fa-chair"></i> Seating</a>
+        <a href="/admin/block-labels" class="nav-link"><i class="fas fa-tag"></i> Block Labels</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Eligibility</div>
+        <a href="/admin/eligibility-criteria" class="nav-link"><i class="fas fa-sliders-h"></i> Criteria</a>
+        <a href="/admin/eligibility-analysis" class="nav-link"><i class="fas fa-chart-bar"></i> Analysis</a>
+        <a href="/admin/eligibility-override" class="nav-link active"><i class="fas fa-user-shield"></i> Override</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Reports</div>
+        <a href="/admin/eligible-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Eligible Students Analysis</a>
+        <a href="/admin/hall-ticket-settings" class="nav-link"><i class="fas fa-clock"></i> Hall Ticket Period</a>
+        <a href="/admin/hall-ticket-generation" class="nav-link"><i class="fas fa-id-card"></i> Hall Ticket Generation</a>
+        <a href="/admin/block-report" class="nav-link"><i class="fas fa-clipboard-list"></i> Block Report</a>
+        <a href="/admin/audit-log" class="nav-link"><i class="fas fa-history"></i> Audit Log</a>
+      </div>
+    </nav>
+    <div class="sidebar-footer"><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button></div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar"><h1>Eligibility Override</h1></div>
+    <div class="content-area">
+      <div id="alert-container"></div>
+
+      <div class="card">
+        <div class="filter-section">
+          <div class="filter-group">
+            <span class="filter-label">Select Exam *</span>
+            <select id="filterExam" class="filter-input" onchange="resetAndLoad()"></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Search Enrollment</span>
+            <input type="text" id="filterSearch" class="filter-input" placeholder="Enrollment..." onkeyup="if(event.key==='Enter') resetAndLoad()">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Status</span>
+            <select id="filterStatus" class="filter-input" onchange="resetAndLoad()">
+              <option value="">All</option>
+              <option value="ELIGIBLE">Eligible</option>
+              <option value="NOT_ELIGIBLE">Not Eligible</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Semester</span>
+            <select id="filterSemester" class="filter-input" onchange="resetAndLoad()"><option value="">All</option></select>
+          </div>
+          <button class="btn-outline" onclick="resetFilters()">Reset</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Enrollment No.</th>
+                <th>Name</th>
+                <th>Sem</th>
+                <th>Att. %</th>
+                <th>Fees</th>
+                <th>Calculated</th>
+                <th>Override</th>
+                <th>Final Status</th>
+                <th>Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dataTable">
+              <tr><td colspan="10" class="empty-state"><i class="fas fa-arrow-up"></i><div>Please select an exam to load data.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination-bar">
+          <div class="page-info" id="pageInfo">Showing 0 of 0</div>
+          <div class="page-controls">
+            <button class="btn-page" id="btnPrev" onclick="changePage(-1)" disabled><i class="fas fa-chevron-left"></i></button>
+            <button class="btn-page" id="btnNext" onclick="changePage(1)" disabled><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Override Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <h2>Override Eligibility</h2>
+      <form id="overrideForm">
+        <input type="hidden" id="override-enroll">
+        
+        <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+          Student: <strong id="override-student" style="color:var(--text)"></strong><br>
+          Calculated Status: <strong id="override-calc" style="color:var(--text)"></strong>
+        </div>
+
+        <label style="font-size:13px;font-weight:600;margin-bottom:6px;display:block;">Final Eligibility *</label>
+        <select id="override-status" class="form-select" required>
+          <option value="ELIGIBLE">ELIGIBLE</option>
+          <option value="NOT_ELIGIBLE">NOT ELIGIBLE</option>
+        </select>
+
+        <label style="font-size:13px;font-weight:600;margin-bottom:6px;display:block;">Reason for Override *</label>
+        <textarea id="override-reason" class="form-control" rows="3" required placeholder="e.g., Medical certificate submitted"></textarea>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-submit" id="submitBtn">Save Override</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    async function checkAuth() { try { const r = await fetch('/api/auth/me'); const d = await r.json(); if (!d.authenticated||d.role!=='ADMIN') window.location.href='/admin/login'; } catch { window.location.href='/admin/login'; } }
+    checkAuth();
+
+    function showAlert(msg, type = 'danger') { document.getElementById('alert-container').innerHTML = `<div class="alert alert-${type}">${msg}</div>`; setTimeout(() => document.getElementById('alert-container').innerHTML = '', 4000); }
+
+    let currentPage = 1;
+    let totalPages = 1;
+    
+    async function loadExams() {
+      try {
+        const res = await fetch('/api/exams');
+        const data = await res.json();
+        const select = document.getElementById('filterExam');
+        select.innerHTML = '<option value="">Select Exam...</option>' + (data.exams||[]).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+      } catch (e) { console.error(e); }
+    }
+    loadExams();
+
+    function resetFilters() {
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterSemester').value = '';
+      resetAndLoad();
+    }
+
+    function resetAndLoad() { currentPage = 1; loadData(); }
+    function changePage(delta) { currentPage += delta; loadData(); }
+
+    async function loadData() {
+      const examId = document.getElementById('filterExam').value;
+      const tbody = document.getElementById('dataTable');
+      if (!examId) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><i class="fas fa-arrow-up"></i><div>Please select an exam to load data.</div></td></tr>';
+        return;
+      }
+
+      const search = document.getElementById('filterSearch').value;
+      const status = document.getElementById('filterStatus').value;
+      const sem = document.getElementById('filterSemester').value;
+
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><i class="fas fa-spinner fa-spin"></i><div>Loading...</div></td></tr>';
+
+      try {
+        let url = `/api/eligibility/${examId}?page=${currentPage}&limit=50`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status) url += `&status=${status}`;
+        if (sem) url += `&semester=${sem}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        // Populate semester filter if empty (for UI convenience, hardcoded 1-10 for now if not dynamic)
+        if (!document.getElementById('filterSemester').innerHTML.includes('value="1"')) {
+          document.getElementById('filterSemester').innerHTML = '<option value="">All</option>' + [1,2,3,4,5,6,7,8,9,10].map(s => `<option value="${s}">Sem ${s}</option>`).join('');
+        }
+
+        if (!data.eligibilities || data.eligibilities.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><i class="fas fa-inbox"></i><div>No matching records found. (Have you run Analysis & Apply yet?)</div></td></tr>';
+        } else {
+          tbody.innerHTML = data.eligibilities.map(row => {
+            const s = row.student || {};
+            const overrideLabel = row.adminOverride ? `<span class="elig-badge ${row.adminOverride}">${row.adminOverride}</span>` : 'â€”';
+            
+            return `<tr>
+              <td><strong>${row.enrollmentNumber}</strong></td>
+              <td>${s.studentName || 'â€”'}</td>
+              <td>${s.semester || 'â€”'}</td>
+              <td>${s.attendancePercent || 0}%</td>
+              <td>${s.feesStatus || 'â€”'}</td>
+              <td><span class="elig-badge ${row.calculatedEligibility}">${row.calculatedEligibility}</span></td>
+              <td>${overrideLabel}</td>
+              <td><span class="elig-badge ${row.finalEligibility}" style="${row.adminOverride ? 'border:1.5px solid var(--primary)' : ''}">${row.finalEligibility}</span></td>
+              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${row.overrideReason||''}">${row.overrideReason||'â€”'}</td>
+              <td>
+                <button class="btn-sm edit" onclick="openModal('${row.enrollmentNumber}', '${s.studentName}', '${row.calculatedEligibility}', '${row.finalEligibility}', \`${row.overrideReason||''}\`)" title="Edit Override"><i class="fas fa-edit"></i></button>
+                ${row.adminOverride ? `<button class="btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeOverride('${row.enrollmentNumber}')" title="Remove Override"><i class="fas fa-undo"></i></button>` : ''}
+              </td>
+            </tr>`;
+          }).join('');
+        }
+
+        totalPages = data.pagination.totalPages || 1;
+        document.getElementById('pageInfo').textContent = `Showing page ${data.pagination.page} of ${totalPages} (${data.pagination.total} total records)`;
+        document.getElementById('btnPrev').disabled = currentPage <= 1;
+        document.getElementById('btnNext').disabled = currentPage >= totalPages;
+
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-state"><i class="fas fa-exclamation-triangle"></i><div>${e.message}</div></td></tr>`;
+      }
+    }
+
+    function openModal(enrollment, name, calc, currentFinal, reason) {
+      document.getElementById('override-enroll').value = enrollment;
+      document.getElementById('override-student').textContent = `${enrollment} - ${name}`;
+      document.getElementById('override-calc').textContent = calc;
+      document.getElementById('override-status').value = currentFinal;
+      document.getElementById('override-reason').value = reason || '';
+      document.getElementById('modal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('show');
+    }
+
+    document.getElementById('overrideForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const examId = document.getElementById('filterExam').value;
+      const enrollmentNumber = document.getElementById('override-enroll').value;
+      
+      const body = {
+        override: document.getElementById('override-status').value,
+        reason: document.getElementById('override-reason').value
+      };
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch(`/api/eligibility/override/${examId}/${enrollmentNumber}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        if (res.ok) {
+          showAlert('Override applied successfully.', 'success');
+          closeModal();
+          loadData();
+        } else {
+          const d = await res.json();
+          showAlert(d.error || 'Failed to apply override.');
+        }
+      } catch { showAlert('Network error.'); }
+      
+      btn.disabled = false;
+      btn.textContent = 'Save Override';
+    });
+
+    async function removeOverride(enrollmentNumber) {
+      if (!confirm(`Remove override for ${enrollmentNumber}? They will revert to calculated eligibility.`)) return;
+      
+      const examId = document.getElementById('filterExam').value;
+      try {
+        const res = await fetch(`/api/eligibility/override/${examId}/${enrollmentNumber}`, { method: 'DELETE' });
+        if (res.ok) {
+          showAlert('Override removed.', 'success');
+          loadData();
+        } else {
+          const d = await res.json();
+          showAlert(d.error || 'Failed to remove override.');
+        }
+      } catch { showAlert('Network error.'); }
+    }
+
+    async function logout() { try { await fetch('/api/auth/logout',{method:'POST'}); } catch {} window.location.href='/admin/login'; }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,752 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hall Ticket Generation â€” SOE Admin</title>
+  <meta name="description" content="Generate Hall Tickets for students with flexible filters â€” SOE Examination Portal">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-w: 260px;
+      --sidebar-bg: #0f172a;
+      --sidebar-hover: #1e293b;
+      --sidebar-active: rgba(59,130,246,0.15);
+      --sidebar-text: #94a3b8;
+      --sidebar-text-active: #ffffff;
+      --primary: #3b82f6;
+      --primary-dark: #1e40af;
+      --surface: #ffffff;
+      --bg: #f1f5f9;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #06b6d4;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.07);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* â”€â”€â”€ SIDEBAR â”€â”€â”€ */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w); background: var(--sidebar-bg);
+      z-index: 1000; display: flex; flex-direction: column;
+      transition: transform 0.3s ease;
+    }
+    .sidebar-brand { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sidebar-brand h2 { color: white; font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+    .sidebar-brand .brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), #818cf8); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sidebar-brand .brand-icon i { color: white; font-size: 16px; }
+    .sidebar-brand small { color: var(--sidebar-text); font-size: 12px; display: block; margin-top: 4px; padding-left: 46px; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 16px 12px; }
+    .nav-section { margin-bottom: 24px; }
+    .nav-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #475569; padding: 0 12px; margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: var(--sidebar-text); text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s ease; margin-bottom: 2px; }
+    .nav-link:hover { background: var(--sidebar-hover); color: #cbd5e1; }
+    .nav-link.active { background: var(--sidebar-active); color: var(--primary); }
+    .nav-link i { width: 20px; text-align: center; font-size: 15px; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .btn-logout { width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: transparent; color: var(--sidebar-text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-logout:hover { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.2); }
+
+    /* â”€â”€â”€ MAIN CONTENT â”€â”€â”€ */
+    .main-content { margin-left: var(--sidebar-w); min-height: 100vh; }
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .topbar h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+    .topbar .badge-env { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: #ecfdf5; color: #059669; font-weight: 600; }
+    .content-area { padding: 28px 32px; }
+
+    /* â”€â”€â”€ CARDS â”€â”€â”€ */
+    .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px; }
+    .card-header-custom { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-header-custom h3 { font-size: 15px; font-weight: 600; margin: 0; }
+    .card-body-custom { padding: 24px; }
+
+    /* â”€â”€â”€ FORMS â”€â”€â”€ */
+    .form-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-select, .form-control { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 14px; font-family: 'Inter', sans-serif; width: 100%; background: white; }
+    .form-select:focus, .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline: none; }
+
+    /* â”€â”€â”€ FILTER GRID â”€â”€â”€ */
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .filter-group { display: flex; flex-direction: column; }
+
+    /* â”€â”€â”€ BUTTONS â”€â”€â”€ */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    .btn-primary-custom { padding: 10px 20px; border: none; border-radius: 8px; background: var(--primary); color: white; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary-custom:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .btn-primary-custom:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { padding: 10px 20px; border: 1.5px solid var(--border); border-radius: 8px; background: white; color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-success-custom { padding: 10px 20px; border: none; border-radius: 8px; background: var(--success); color: white; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-success-custom:hover { background: #059669; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    .btn-success-custom:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* â”€â”€â”€ STATS MINI â”€â”€â”€ */
+    .stats-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-mini { background: var(--surface); border-radius: 10px; padding: 16px; border: 1px solid var(--border); text-align: center; transition: transform 0.2s; }
+    .stat-mini:hover { transform: translateY(-1px); }
+    .stat-mini .stat-num { font-size: 24px; font-weight: 800; line-height: 1.2; }
+    .stat-mini .stat-lbl { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .stat-mini.blue .stat-num { color: var(--primary); }
+    .stat-mini.green .stat-num { color: var(--success); }
+    .stat-mini.red .stat-num { color: var(--danger); }
+    .stat-mini.amber .stat-num { color: var(--warning); }
+    .stat-mini.cyan .stat-num { color: var(--info); }
+
+    /* â”€â”€â”€ TABLE â”€â”€â”€ */
+    .table-wrapper { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 2px solid var(--border); white-space: nowrap; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:hover { background: #f8fafc; }
+    .data-table .cb-col { width: 40px; text-align: center; }
+    .data-table input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+
+    /* â”€â”€â”€ BADGES â”€â”€â”€ */
+    .badge-status { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+    .badge-eligible { background: #ecfdf5; color: #059669; }
+    .badge-not-eligible { background: #fef2f2; color: #dc2626; }
+    .badge-pending { background: #fffbeb; color: #d97706; }
+    .badge-ready { background: #ecfdf5; color: #059669; }
+    .badge-warning { background: #fffbeb; color: #d97706; }
+    .badge-override { background: #eef2ff; color: #6366f1; }
+    .badge-outdated { background: #fef2f2; color: #dc2626; }
+    .badge-completed { background: #ecfdf5; color: #059669; }
+    .badge-failed { background: #fef2f2; color: #dc2626; }
+    .badge-in-progress { background: #eff6ff; color: var(--primary); }
+
+    /* â”€â”€â”€ ALERT â”€â”€â”€ */
+    .alert-custom { border-radius: 10px; font-size: 14px; border: none; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+    .alert-custom.info { background: #eff6ff; color: var(--primary-dark); }
+    .alert-custom.success { background: #ecfdf5; color: #065f46; }
+    .alert-custom.warning { background: #fffbeb; color: #92400e; }
+    .alert-custom.danger { background: #fef2f2; color: #991b1b; }
+
+    /* â”€â”€â”€ EMPTY STATE â”€â”€â”€ */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state i { font-size: 36px; margin-bottom: 12px; display: block; opacity: 0.4; }
+    .empty-state p { font-size: 14px; margin: 0; }
+
+    /* â”€â”€â”€ PROGRESS â”€â”€â”€ */
+    .gen-progress { display: none; text-align: center; padding: 32px; }
+    .gen-progress .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* â”€â”€â”€ SELECT BAR â”€â”€â”€ */
+    .select-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 0; padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid var(--border); }
+    .select-bar .select-info { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+    .select-bar .select-info strong { color: var(--text); }
+
+    /* â”€â”€â”€ SIDEBAR TOGGLE â”€â”€â”€ */
+    .sidebar-toggle { display: none; background: none; border: none; font-size: 22px; color: var(--text); cursor: pointer; }
+
+    /* â”€â”€â”€ HISTORY TABLE â”€â”€â”€ */
+    .history-table { font-size: 12px; }
+    .history-table th { font-size: 10px; }
+    .history-table td { padding: 8px 10px; }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .sidebar-toggle { display: block; }
+      .content-area { padding: 20px 16px; }
+      .topbar { padding: 12px 16px; }
+      .filter-grid { grid-template-columns: 1fr; }
+      .stats-mini-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+
+  <!-- Responsive Overrides -->
+  <link rel="stylesheet" href="/css/mobile-responsive.css">
+  <script src="/js/mobile-nav.js"></script>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><h2><span class="brand-icon"><i class="fas fa-graduation-cap"></i></span>SOE Portal</h2><small>Examination Management</small></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section"><div class="nav-section-title">Main</div><a href="/admin/dashboard" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a></div>
+      <div class="nav-section"><div class="nav-section-title">Examination</div>
+        <a href="/admin/academic-years" class="nav-link"><i class="fas fa-calendar-alt"></i> Academic Years</a>
+        <a href="/admin/exams" class="nav-link"><i class="fas fa-file-alt"></i> Exams</a>
+        <a href="/admin/subject-master" class="nav-link"><i class="fas fa-book"></i> Subject Master</a>
+        <a href="/admin/excel-upload" class="nav-link"><i class="fas fa-file-excel"></i> Excel Upload</a>
+        <a href="/admin/exam-data" class="nav-link"><i class="fas fa-database"></i> Exam Data</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Arrangement</div>
+        <a href="/admin/seating" class="nav-link"><i class="fas fa-chair"></i> Seating</a>
+        <a href="/admin/block-labels" class="nav-link"><i class="fas fa-tag"></i> Block Labels</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Eligibility</div>
+        <a href="/admin/eligibility-criteria" class="nav-link"><i class="fas fa-sliders-h"></i> Criteria</a>
+        <a href="/admin/eligibility-analysis" class="nav-link"><i class="fas fa-chart-bar"></i> Analysis</a>
+        <a href="/admin/eligibility-override" class="nav-link"><i class="fas fa-user-shield"></i> Override</a>
+      </div>
+      <div class="nav-section"><div class="nav-section-title">Reports</div>
+        <a href="/admin/eligible-analysis" class="nav-link"><i class="fas fa-chart-pie"></i> Eligible Students Analysis</a>
+        <a href="/admin/hall-ticket-settings" class="nav-link"><i class="fas fa-clock"></i> Hall Ticket Period</a>
+        <a href="/admin/hall-ticket-generation" class="nav-link active"><i class="fas fa-id-card"></i> Hall Ticket Generation</a>
+        <a href="/admin/block-report" class="nav-link"><i class="fas fa-clipboard-list"></i> Block Report</a>
+        <a href="/admin/audit-log" class="nav-link"><i class="fas fa-history"></i> Audit Log</a>
+      </div>
+    </nav>
+    <div class="sidebar-footer"><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button></div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <h1><i class="fas fa-id-card" style="color:var(--primary);margin-right:8px"></i>Hall Ticket Generation</h1>
+      </div>
+      <span class="badge-env">â— Online</span>
+    </div>
+
+    <div class="content-area">
+      <!-- ALERT -->
+      <div id="alertContainer"></div>
+
+      <!-- FILTER PANEL -->
+      <div class="card" id="filterCard">
+        <div class="card-header-custom">
+          <h3><i class="fas fa-filter" style="color:var(--primary);margin-right:8px"></i>Search & Filter Students</h3>
+        </div>
+        <div class="card-body-custom">
+          <div class="filter-grid">
+            <div class="filter-group">
+              <label class="form-label">Examination *</label>
+              <select id="examSelect" class="form-select">
+                <option value="">Select Examination...</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label">Semester</label>
+              <select id="semesterSelect" class="form-select" disabled>
+                <option value="">All Semesters</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label">Program</label>
+              <select id="programSelect" class="form-select" disabled>
+                <option value="">All Programs</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label">Division</label>
+              <select id="divisionSelect" class="form-select" disabled>
+                <option value="">All Divisions</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="form-label">Enrollment Number</label>
+              <input type="text" id="enrollmentInput" class="form-control" placeholder="Search enrollment..." disabled>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary-custom" id="searchBtn" disabled onclick="searchStudents()">
+              <i class="fas fa-search"></i> Search Students
+            </button>
+            <button class="btn-outline" id="resetBtn" onclick="resetFilters()">
+              <i class="fas fa-undo"></i> Reset Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div id="statsSection" style="display:none;">
+        <div class="stats-mini-grid">
+          <div class="stat-mini blue"><div class="stat-num" id="countTotal">0</div><div class="stat-lbl">Total Students</div></div>
+          <div class="stat-mini green"><div class="stat-num" id="countEligible">0</div><div class="stat-lbl">Eligible</div></div>
+          <div class="stat-mini red"><div class="stat-num" id="countNotEligible">0</div><div class="stat-lbl">Not Eligible</div></div>
+          <div class="stat-mini cyan"><div class="stat-num" id="countReady">0</div><div class="stat-lbl">Ready for HT</div></div>
+          <div class="stat-mini amber"><div class="stat-num" id="countMissingSeating">0</div><div class="stat-lbl">Missing Seating</div></div>
+        </div>
+      </div>
+
+      <!-- PREVIEW TABLE -->
+      <div class="card" id="previewCard" style="display:none;">
+        <div class="card-header-custom">
+          <h3><i class="fas fa-list" style="color:var(--info);margin-right:8px"></i>Student Preview</h3>
+          <span id="previewMessage" style="font-size:12px;color:var(--text-muted);"></span>
+        </div>
+        <div class="card-body-custom" style="padding:0;">
+          <div class="select-bar" id="selectBar">
+            <div class="select-info"><strong id="selectedCount">0</strong> of <strong id="readyCount">0</strong> ready students selected</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-outline btn-sm" onclick="selectAll()"><i class="fas fa-check-double"></i> Select All Ready</button>
+              <button class="btn-outline btn-sm" onclick="deselectAll()"><i class="fas fa-times"></i> Deselect All</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="studentTable">
+              <thead>
+                <tr>
+                  <th class="cb-col"><input type="checkbox" id="selectAllCb" onchange="toggleSelectAll(this)"></th>
+                  <th>Sr.</th>
+                  <th>Enrollment</th>
+                  <th>Name</th>
+                  <th>Program</th>
+                  <th>Sem</th>
+                  <th>Division</th>
+                  <th>Eligibility</th>
+                  <th>Block</th>
+                  <th>Classroom</th>
+                  <th>Schedule</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="studentTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- GENERATION ACTIONS -->
+      <div class="card" id="genActionsCard" style="display:none;">
+        <div class="card-header-custom">
+          <h3><i class="fas fa-cogs" style="color:var(--success);margin-right:8px"></i>Generate Hall Tickets</h3>
+        </div>
+        <div class="card-body-custom">
+          <div class="btn-row">
+            <button class="btn-success-custom" id="genSelectedBtn" onclick="generateSelected()" disabled>
+              <i class="fas fa-file-pdf"></i> Generate Selected (<span id="genSelectedCount">0</span>)
+            </button>
+            <button class="btn-primary-custom" id="genAllFilteredBtn" onclick="generateAllFiltered()" disabled>
+              <i class="fas fa-layer-group"></i> Generate All Ready (<span id="genAllCount">0</span>)
+            </button>
+          </div>
+          <div class="gen-progress" id="genProgress">
+            <div class="spinner"></div>
+            <div style="font-weight:600;margin-bottom:4px;">Generating Hall Tickets...</div>
+            <div style="font-size:13px;color:var(--text-muted);" id="genProgressText">Please wait, do not close this page.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GENERATION HISTORY -->
+      <div class="card" id="historyCard" style="display:none;">
+        <div class="card-header-custom">
+          <h3><i class="fas fa-history" style="color:var(--text-muted);margin-right:8px"></i>Generation History</h3>
+        </div>
+        <div class="card-body-custom" style="padding:0;">
+          <div class="table-wrapper">
+            <table class="data-table history-table" id="historyTable">
+              <thead>
+                <tr>
+                  <th>Generated At</th>
+                  <th>Generated By</th>
+                  <th>Filters</th>
+                  <th>Students</th>
+                  <th>Generated</th>
+                  <th>Skipped</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No generation history yet.</p></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // â•â•â• STATE â•â•â•
+    let currentExamId = '';
+    let searchResults = [];
+    let selectedEnrollments = new Set();
+    let isGenerating = false;
+
+    // â•â•â• AUTH â•â•â•
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        const d = await r.json();
+        if (!d.authenticated || d.role !== 'ADMIN') window.location.href = '/admin/login';
+      } catch { window.location.href = '/admin/login'; }
+    }
+    checkAuth();
+
+    // â•â•â• LOAD EXAMS â•â•â•
+    async function loadExams() {
+      try {
+        const res = await fetch('/api/exams');
+        const data = await res.json();
+        const exams = (data.exams || []).filter(e => e.isActive);
+        document.getElementById('examSelect').innerHTML =
+          '<option value="">Select Examination...</option>' +
+          exams.map(e => `<option value="${e.id}">${e.name} (${e.academicYear?.name || ''})</option>`).join('');
+      } catch (e) { console.error('Failed to load exams:', e); }
+    }
+    loadExams();
+
+    // â•â•â• EXAM CHANGE â•â•â•
+    document.getElementById('examSelect').addEventListener('change', async function() {
+      currentExamId = this.value;
+      resetPreview();
+      if (!currentExamId) { setFiltersDisabled(true); return; }
+      setFiltersDisabled(false);
+      await loadFilters();
+      await loadHistory();
+      document.getElementById('historyCard').style.display = 'block';
+    });
+
+    async function loadFilters(params = {}) {
+      if (!currentExamId) return;
+      try {
+        const qs = new URLSearchParams(params).toString();
+        const res = await fetch(`/api/hall-ticket/filters/${currentExamId}?${qs}`);
+        const data = await res.json();
+
+        if (!params.semester) {
+          const semSel = document.getElementById('semesterSelect');
+          const curSem = semSel.value;
+          semSel.innerHTML = '<option value="">All Semesters</option>' +
+            data.semesters.map(s => `<option value="${s}" ${String(s) === curSem ? 'selected' : ''}>Semester ${s}</option>`).join('');
+        }
+        if (!params.program) {
+          const progSel = document.getElementById('programSelect');
+          const curProg = progSel.value;
+          progSel.innerHTML = '<option value="">All Programs</option>' +
+            data.programs.map(p => `<option value="${p}" ${p === curProg ? 'selected' : ''}>${p}</option>`).join('');
+        }
+        if (!params.division) {
+          const divSel = document.getElementById('divisionSelect');
+          const curDiv = divSel.value;
+          divSel.innerHTML = '<option value="">All Divisions</option>' +
+            data.divisions.map(d => `<option value="${d}" ${d === curDiv ? 'selected' : ''}>${d}</option>`).join('');
+        }
+      } catch (e) { console.error('Filters error:', e); }
+    }
+
+    // Dependent filter handlers
+    document.getElementById('semesterSelect').addEventListener('change', function() {
+      const params = {};
+      if (this.value) params.semester = this.value;
+      const prog = document.getElementById('programSelect').value;
+      if (prog) params.program = prog;
+      loadFilters(params);
+    });
+    document.getElementById('programSelect').addEventListener('change', function() {
+      const params = {};
+      if (this.value) params.program = this.value;
+      const sem = document.getElementById('semesterSelect').value;
+      if (sem) params.semester = sem;
+      loadFilters(params);
+    });
+    document.getElementById('divisionSelect').addEventListener('change', function() {
+      const params = {};
+      if (this.value) params.division = this.value;
+      const sem = document.getElementById('semesterSelect').value;
+      if (sem) params.semester = sem;
+      const prog = document.getElementById('programSelect').value;
+      if (prog) params.program = prog;
+      loadFilters(params);
+    });
+
+    function setFiltersDisabled(disabled) {
+      document.getElementById('semesterSelect').disabled = disabled;
+      document.getElementById('programSelect').disabled = disabled;
+      document.getElementById('divisionSelect').disabled = disabled;
+      document.getElementById('enrollmentInput').disabled = disabled;
+      document.getElementById('searchBtn').disabled = disabled;
+    }
+
+    // â•â•â• SEARCH STUDENTS â•â•â•
+    async function searchStudents() {
+      if (!currentExamId) return showAlert('Please select an examination.', 'warning');
+      const btn = document.getElementById('searchBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+
+      try {
+        const body = {};
+        const sem = document.getElementById('semesterSelect').value;
+        const prog = document.getElementById('programSelect').value;
+        const div = document.getElementById('divisionSelect').value;
+        const enr = document.getElementById('enrollmentInput').value.trim();
+        if (sem) body.semester = parseInt(sem);
+        if (prog) body.program = prog;
+        if (div) body.division = div;
+        if (enr) body.enrollmentNumber = enr;
+
+        const res = await fetch(`/api/hall-ticket/search/${currentExamId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Search failed.');
+
+        searchResults = data.students || [];
+        selectedEnrollments.clear();
+
+        document.getElementById('countTotal').textContent = data.counts.total;
+        document.getElementById('countEligible').textContent = data.counts.eligible;
+        document.getElementById('countNotEligible').textContent = data.counts.notEligible;
+        document.getElementById('countReady').textContent = data.counts.ready;
+        document.getElementById('countMissingSeating').textContent = data.counts.missingSeating;
+
+        document.getElementById('statsSection').style.display = 'block';
+        document.getElementById('previewCard').style.display = 'block';
+        document.getElementById('genActionsCard').style.display = 'block';
+        document.getElementById('previewMessage').textContent = data.message || '';
+
+        renderStudentTable(searchResults);
+        updateSelectedCounts();
+
+        if (data.counts.total === 0) showAlert(data.message || 'No students found.', 'info');
+        else if (data.counts.ready === 0) showAlert(data.message, 'warning');
+      } catch (e) { showAlert(e.message, 'danger'); }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-search"></i> Search Students';
+    }
+
+    document.getElementById('enrollmentInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); searchStudents(); }
+    });
+
+    // â•â•â• RENDER TABLE â•â•â•
+    function renderStudentTable(students) {
+      const tbody = document.getElementById('studentTableBody');
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="empty-state"><i class="fas fa-search"></i><p>No students found for the selected filters.</p></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, idx) => {
+        const eligBadge = s.finalEligibility === 'ELIGIBLE'
+          ? '<span class="badge-status badge-eligible">Eligible</span>'
+          : s.finalEligibility === 'NOT_ELIGIBLE'
+          ? '<span class="badge-status badge-not-eligible">Not Eligible</span>'
+          : '<span class="badge-status badge-pending">Pending</span>';
+        const overrideBadge = s.isOverridden ? ' <span class="badge-status badge-override" title="Admin Override">Override</span>' : '';
+        const statusBadge = s.isReady
+          ? '<span class="badge-status badge-ready">Ready</span>'
+          : '<span class="badge-status badge-warning">' + (s.issues || []).join(', ') + '</span>';
+        const isDisabled = !s.isReady;
+        const isChecked = selectedEnrollments.has(s.enrollmentNumber);
+
+        return `<tr>
+          <td class="cb-col"><input type="checkbox" data-enrollment="${s.enrollmentNumber}" ${isDisabled ? 'disabled' : ''} ${isChecked ? 'checked' : ''} onchange="toggleStudent('${s.enrollmentNumber}', this.checked)"></td>
+          <td>${idx + 1}</td>
+          <td><strong>${s.enrollmentNumber}</strong></td>
+          <td>${s.studentName}</td>
+          <td>${s.program}</td>
+          <td>${s.semester}</td>
+          <td>${s.division}</td>
+          <td>${eligBadge}${overrideBadge}</td>
+          <td>${s.blockNumber || 'â€”'}</td>
+          <td>${s.classroom || 'â€”'}</td>
+          <td>${s.hasSchedule ? s.scheduleCount + ' subject(s)' : '<span style="color:var(--danger)">None</span>'}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // â•â•â• SELECTION â•â•â•
+    function toggleStudent(enrollment, checked) {
+      if (checked) selectedEnrollments.add(enrollment);
+      else selectedEnrollments.delete(enrollment);
+      updateSelectedCounts();
+    }
+    function toggleSelectAll(cb) {
+      document.querySelectorAll('#studentTableBody input[type="checkbox"]:not(:disabled)').forEach(c => {
+        c.checked = cb.checked;
+        if (cb.checked) selectedEnrollments.add(c.dataset.enrollment);
+        else selectedEnrollments.delete(c.dataset.enrollment);
+      });
+      updateSelectedCounts();
+    }
+    function selectAll() {
+      document.querySelectorAll('#studentTableBody input[type="checkbox"]:not(:disabled)').forEach(c => {
+        c.checked = true; selectedEnrollments.add(c.dataset.enrollment);
+      });
+      document.getElementById('selectAllCb').checked = true;
+      updateSelectedCounts();
+    }
+    function deselectAll() {
+      document.querySelectorAll('#studentTableBody input[type="checkbox"]').forEach(c => { c.checked = false; });
+      selectedEnrollments.clear();
+      document.getElementById('selectAllCb').checked = false;
+      updateSelectedCounts();
+    }
+    function updateSelectedCounts() {
+      const readyStudents = searchResults.filter(s => s.isReady);
+      const count = selectedEnrollments.size;
+      document.getElementById('selectedCount').textContent = count;
+      document.getElementById('readyCount').textContent = readyStudents.length;
+      document.getElementById('genSelectedCount').textContent = count;
+      document.getElementById('genAllCount').textContent = readyStudents.length;
+      document.getElementById('genSelectedBtn').disabled = count === 0 || isGenerating;
+      document.getElementById('genAllFilteredBtn').disabled = readyStudents.length === 0 || isGenerating;
+    }
+
+    // â•â•â• GENERATE â•â•â•
+    async function generateSelected() {
+      if (selectedEnrollments.size === 0) return;
+      await doGenerate([...selectedEnrollments]);
+    }
+    async function generateAllFiltered() {
+      const ready = searchResults.filter(s => s.isReady).map(s => s.enrollmentNumber);
+      if (ready.length === 0) return;
+      await doGenerate(ready);
+    }
+
+    async function doGenerate(enrollmentNumbers) {
+      if (isGenerating) return;
+      isGenerating = true;
+      const genSelectedBtn = document.getElementById('genSelectedBtn');
+      const genAllBtn = document.getElementById('genAllFilteredBtn');
+      const progress = document.getElementById('genProgress');
+      genSelectedBtn.disabled = true;
+      genAllBtn.disabled = true;
+      progress.style.display = 'block';
+      document.getElementById('genProgressText').textContent = `Generating ${enrollmentNumbers.length} Hall Ticket(s)... Please wait.`;
+
+      try {
+        const filterCriteria = {
+          program: document.getElementById('programSelect').value || null,
+          semester: document.getElementById('semesterSelect').value || null,
+          division: document.getElementById('divisionSelect').value || null,
+        };
+
+        const res = await fetch(`/api/hall-ticket/generate-bulk/${currentExamId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enrollmentNumbers, filterCriteria }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          let errorMsg = errData.error || 'Generation failed.';
+          if (errData.skipped && errData.skipped.length > 0) {
+            errorMsg += '<br><br><strong>Skipped students:</strong><br>' +
+              errData.skipped.map(s => `${s.enrollmentNumber}: ${s.reason}`).join('<br>');
+          }
+          throw new Error(errorMsg);
+        }
+
+        const blob = await res.blob();
+        const generatedCount = res.headers.get('X-Generated-Count') || enrollmentNumbers.length;
+        const skippedCount = res.headers.get('X-Skipped-Count') || '0';
+
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const filenameMatch = disposition.match(/filename=(.+)/);
+        const filename = filenameMatch ? filenameMatch[1] : 'HallTickets.pdf';
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        let successMsg = `${generatedCount} Hall Ticket(s) generated successfully.`;
+        if (parseInt(skippedCount) > 0) {
+          const skippedDetails = JSON.parse(res.headers.get('X-Skipped-Details') || '[]');
+          successMsg += ` ${skippedCount} student(s) skipped.`;
+          if (skippedDetails.length > 0) {
+            successMsg += '<br><small>' + skippedDetails.map(s => `${s.enrollmentNumber}: ${s.reason}`).join(', ') + '</small>';
+          }
+        }
+        showAlert(successMsg, 'success');
+        await loadHistory();
+      } catch (e) { showAlert(e.message, 'danger'); }
+
+      progress.style.display = 'none';
+      isGenerating = false;
+      updateSelectedCounts();
+    }
+
+    // â•â•â• HISTORY â•â•â•
+    async function loadHistory() {
+      if (!currentExamId) return;
+      try {
+        const res = await fetch(`/api/hall-ticket/history/${currentExamId}`);
+        const data = await res.json();
+        const tbody = document.getElementById('historyTableBody');
+        if (!data.generations || data.generations.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No generation history yet.</p></td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.generations.map(g => {
+          const time = new Date(g.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+          const filters = g.filterCriteria
+            ? Object.entries(g.filterCriteria).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(', ')
+            : 'All';
+          let statusBadge = '';
+          if (g.status === 'COMPLETED') statusBadge = '<span class="badge-status badge-completed">Completed</span>';
+          else if (g.status === 'FAILED') statusBadge = '<span class="badge-status badge-failed">Failed</span>';
+          else statusBadge = '<span class="badge-status badge-in-progress">In Progress</span>';
+          if (g.isOutdated) statusBadge += ' <span class="badge-status badge-outdated">Outdated</span>';
+          return `<tr>
+            <td>${time}</td>
+            <td>${g.generatedBy}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${filters}</td>
+            <td>${g.totalStudents}</td>
+            <td><strong>${g.generatedCount}</strong></td>
+            <td>${g.skippedCount}</td>
+            <td>${statusBadge}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error('History error:', e); }
+    }
+
+    // â•â•â• RESET â•â•â•
+    function resetFilters() {
+      document.getElementById('semesterSelect').value = '';
+      document.getElementById('programSelect').value = '';
+      document.getElementById('divisionSelect').value = '';
+      document.getElementById('enrollmentInput').value = '';
+      if (currentExamId) loadFilters();
+      resetPreview();
+    }
+    function resetPreview() {
+      searchResults = [];
+      selectedEnrollments.clear();
+      document.getElementById('statsSection').style.display = 'none';
+      document.getElementById('previewCard').style.display = 'none';
+      document.getElementById('genActionsCard').style.display = 'none';
+      document.getElementById('alertContainer').innerHTML = '';
+    }
+
+    // â•â•â• UTILITIES â•â•â•
+    function showAlert(msg, type = 'danger') {
+      const icons = { info: 'info-circle', success: 'check-circle', warning: 'exclamation-triangle', danger: 'times-circle' };
+      document.getElementById('alertContainer').innerHTML =
+        `<div class="alert-custom ${type}"><i class="fas fa-${icons[type] || 'info-circle'}"></i><div>${msg}</div></div>`;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => { document.getElementById('alertContainer').innerHTML = ''; }, 8000);
+    }
+    async function logout() { try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {} window.location.href = '/admin/login'; }
+    document.getElementById('sidebarToggle').addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('open'); });
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-link').forEach(link => { link.classList.toggle('active', link.getAttribute('href') === currentPath); });
+  </script>
+</body>
+</html>
+
