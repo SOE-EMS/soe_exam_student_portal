@@ -14,6 +14,9 @@ const { seedAdmin } = require('./src/config/seed');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy on Vercel / reverse proxy
+app.set('trust proxy', 1);
+
 // ──────────────────────────────────────────────
 // MIDDLEWARE STACK
 // ──────────────────────────────────────────────
@@ -165,7 +168,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Start the server (not in Vercel serverless)
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   startServer();
 }
 
