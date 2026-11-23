@@ -437,11 +437,97 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
  * Commit seating arrangement to database
  */
 async function commitSeatingData(examId, arrangements, userId) {
+  // 1. Pre-fetch and pre-compute all data OUTSIDE the transaction
+  const arrangementsToCreate = [];
+  const assignmentMap = new Map();
+
+  // Pre-fetch subject roll mappings once per distinct subject
+  const distinctSubjects = [...new Set(arrangements.map(a => a.subjectCode).filter(Boolean))];
+  const subjectRollMaps = new Map();
+  for (const code of distinctSubjects) {
+    const rollMap = await getSubjectRollNumberMap(examId, code);
+    subjectRollMaps.set(code, rollMap);
+  }
+
+  // Pre-fetch all student exam subjects for this exam
+  const allStudentSubjects = await prisma.studentExamSubject.findMany({
+    where: { examSchedule: { examId } },
+    select: {
+      examSchedule: { select: { subjectCode: true } },
+      examStudentData: { select: { enrollmentNumber: true } }
+    }
+  });
+
+  const subjectEnrollmentsMap = new Map();
+  for (const ss of allStudentSubjects) {
+    const code = ss.examSchedule?.subjectCode;
+    const enr = ss.examStudentData?.enrollmentNumber;
+    if (code && enr) {
+      if (!subjectEnrollmentsMap.has(code)) subjectEnrollmentsMap.set(code, []);
+      subjectEnrollmentsMap.get(code).push(enr);
+    }
+  }
+
+  let allExamStudents = null;
+
+  for (const arr of arrangements) {
+    const subjectBlockDisplay = arr.subjectBlockStr || (arr.subjectCode ? `${arr.subjectCode}(${arr.subjectBlock})` : String(arr.subjectBlock));
+
+    arrangementsToCreate.push({
+      examId,
+      blockNumber: arr.blockNumber,
+      subjectBlock: arr.subjectBlock || 0,
+      subjectBlockStr: subjectBlockDisplay,
+      subjectCode: arr.subjectCode || null,
+      classroom: arr.classroom,
+      fromEnrollment: arr.fromEnrollment,
+      toEnrollment: arr.toEnrollment,
+      blockCount: arr.totalCount || arr.blockCount || 0
+    });
+
+    let enrollments = [];
+    if (arr.fromRoll !== null && arr.fromRoll !== undefined && arr.toRoll !== null && arr.toRoll !== undefined && arr.subjectCode) {
+      const rollMap = subjectRollMaps.get(arr.subjectCode);
+      if (rollMap) {
+        for (const [enr, r] of rollMap.entries()) {
+          if (r >= arr.fromRoll && r <= arr.toRoll) {
+            enrollments.push(enr);
+          }
+        }
+      }
+    } else if (arr.subjectCode && subjectEnrollmentsMap.has(arr.subjectCode)) {
+      const enrs = subjectEnrollmentsMap.get(arr.subjectCode);
+      enrollments = enrs.filter(e => e >= arr.fromEnrollment && e <= arr.toEnrollment);
+    } else if (arr.fromEnrollment && arr.toEnrollment) {
+      if (!allExamStudents) {
+        const students = await prisma.examStudentData.findMany({
+          where: { examId },
+          select: { enrollmentNumber: true },
+        });
+        allExamStudents = students.map(s => s.enrollmentNumber);
+      }
+      enrollments = allExamStudents.filter(e => e >= arr.fromEnrollment && e <= arr.toEnrollment);
+    }
+
+    for (const enr of enrollments) {
+      if (!assignmentMap.has(enr)) {
+        assignmentMap.set(enr, {
+          examId,
+          enrollmentNumber: enr,
+          blockNumber: arr.blockNumber,
+          classroom: arr.classroom,
+        });
+      }
+    }
+  }
+
+  const assignments = Array.from(assignmentMap.values());
+
+  // 2. Fast atomic database batch transaction (< 1 second)
   return await prisma.$transaction(async (tx) => {
     await tx.seatingArrangement.deleteMany({ where: { examId } });
     await tx.blockAssignment.deleteMany({ where: { examId } });
 
-    // Mark existing block reports and hall ticket generations as outdated
     await tx.blockReportGeneration.updateMany({
       where: { examId, isOutdated: false },
       data: { isOutdated: true }
@@ -451,78 +537,12 @@ async function commitSeatingData(examId, arrangements, userId) {
       data: { isOutdated: true }
     });
 
-    const assignmentMap = new Map();
-
-    for (const arr of arrangements) {
-      const subjectBlockDisplay = arr.subjectBlockStr || (arr.subjectCode ? `${arr.subjectCode}(${arr.subjectBlock})` : String(arr.subjectBlock));
-
-      await tx.seatingArrangement.create({
-        data: { 
-          examId, 
-          blockNumber: arr.blockNumber,
-          subjectBlock: arr.subjectBlock || 0,
-          subjectBlockStr: subjectBlockDisplay,
-          subjectCode: arr.subjectCode || null,
-          classroom: arr.classroom,
-          fromEnrollment: arr.fromEnrollment,
-          toEnrollment: arr.toEnrollment,
-          blockCount: arr.totalCount || arr.blockCount || 0
-        },
+    for (let i = 0; i < arrangementsToCreate.length; i += 500) {
+      await tx.seatingArrangement.createMany({
+        data: arrangementsToCreate.slice(i, i + 500),
       });
-
-      // Find all students in this range
-      let enrollments = [];
-      if (arr.fromRoll !== null && arr.fromRoll !== undefined && arr.toRoll !== null && arr.toRoll !== undefined && arr.subjectCode) {
-        const rollMap = await getSubjectRollNumberMap(examId, arr.subjectCode);
-        for (const [enr, r] of rollMap.entries()) {
-          if (r >= arr.fromRoll && r <= arr.toRoll) {
-            enrollments.push(enr);
-          }
-        }
-      } else if (arr.subjectCode) {
-        const studentSubjects = await tx.studentExamSubject.findMany({
-          where: {
-            examSchedule: { examId, subjectCode: arr.subjectCode },
-            examStudentData: {
-              enrollmentNumber: {
-                gte: arr.fromEnrollment,
-                lte: arr.toEnrollment,
-              },
-            },
-          },
-          select: { examStudentData: { select: { enrollmentNumber: true } } },
-          orderBy: { examStudentData: { enrollmentNumber: 'asc' } },
-        });
-        enrollments = studentSubjects.map(s => s.examStudentData.enrollmentNumber);
-      } else {
-        const students = await tx.examStudentData.findMany({
-          where: {
-            examId,
-            enrollmentNumber: {
-              gte: arr.fromEnrollment,
-              lte: arr.toEnrollment,
-            },
-          },
-          select: { enrollmentNumber: true },
-          orderBy: { enrollmentNumber: 'asc' },
-        });
-        enrollments = students.map(s => s.enrollmentNumber);
-      }
-
-      for (const enr of enrollments) {
-        if (!assignmentMap.has(enr)) {
-          assignmentMap.set(enr, {
-            examId,
-            enrollmentNumber: enr,
-            blockNumber: arr.blockNumber,
-            classroom: arr.classroom,
-          });
-        }
-      }
     }
 
-    // Bulk create block assignments in chunks of 500
-    const assignments = Array.from(assignmentMap.values());
     for (let i = 0; i < assignments.length; i += 500) {
       await tx.blockAssignment.createMany({
         data: assignments.slice(i, i + 500),
@@ -531,7 +551,7 @@ async function commitSeatingData(examId, arrangements, userId) {
     }
 
     return { blocks: arrangements.length };
-  }, { timeout: 45000 });
+  }, { timeout: 30000 });
 }
 
 /**
