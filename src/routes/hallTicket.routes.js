@@ -286,8 +286,10 @@ async function buildHallTicket(examId, enrollmentNumber) {
 
   const isImprovement = exam.type === 'IMPROVEMENT';
   let rollMap = null;
+  let seatingArrangements = null;
   if (isImprovement) {
     rollMap = await getExamRollNumberMap(examId);
+    seatingArrangements = await prisma.seatingArrangement.findMany({ where: { examId } });
   }
 
   // Get schedules for this student
@@ -297,8 +299,21 @@ async function buildHallTicket(examId, enrollmentNumber) {
       const sched = { ...s.examSchedule };
       if (isImprovement) {
         sched.rollNo = (rollMap && rollMap.get(sched.subjectCode)?.get(enrollmentNumber)) ?? s.rollNumber ?? null;
+        const matchingArr = seatingArrangements?.find(arr => {
+          if (!arr.subjectCode || arr.subjectCode.trim() !== sched.subjectCode.trim()) return false;
+          if (/^\d+$/.test(arr.fromEnrollment) && /^\d+$/.test(arr.toEnrollment) && sched.rollNo !== null && sched.rollNo !== undefined) {
+            return sched.rollNo >= parseInt(arr.fromEnrollment) && sched.rollNo <= parseInt(arr.toEnrollment);
+          }
+          return enrollmentNumber >= arr.fromEnrollment && enrollmentNumber <= arr.toEnrollment;
+        });
+        if (matchingArr) {
+          sched.blockDisplay = `${matchingArr.blockNumber} – ${matchingArr.classroom}`;
+        } else {
+          sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
+        }
+      } else {
+        sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
       }
-      sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
       return sched;
     })
     .filter(Boolean);
@@ -350,7 +365,7 @@ async function buildHallTicket(examId, enrollmentNumber) {
  * Skips block report check — admin generation doesn't require finalized block report
  * Still enforces: finalEligibility, seating, schedule
  */
-async function buildHallTicketForBulk(examId, enrollmentNumber, exam, rollMap = null) {
+async function buildHallTicketForBulk(examId, enrollmentNumber, exam, rollMap = null, seatingArrangements = null) {
   // Check eligibility
   const eligibility = await prisma.eligibility.findUnique({
     where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
@@ -369,14 +384,17 @@ async function buildHallTicketForBulk(examId, enrollmentNumber, exam, rollMap = 
   if (!studentData) return { error: 'Student data not found', enrollmentNumber };
 
   // Get block assignment
+  const isImprovement = exam.type === 'IMPROVEMENT';
   const blockAssignment = await prisma.blockAssignment.findUnique({
     where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
   });
-  if (!blockAssignment) return { error: 'Missing block/seating assignment', enrollmentNumber };
+  if (!blockAssignment && !isImprovement) return { error: 'Missing block/seating assignment', enrollmentNumber };
 
-  const isImprovement = exam.type === 'IMPROVEMENT';
   if (isImprovement && !rollMap) {
     rollMap = await getExamRollNumberMap(examId);
+  }
+  if (isImprovement && !seatingArrangements) {
+    seatingArrangements = await prisma.seatingArrangement.findMany({ where: { examId } });
   }
 
   // Get schedules
@@ -386,8 +404,21 @@ async function buildHallTicketForBulk(examId, enrollmentNumber, exam, rollMap = 
       const sched = { ...s.examSchedule };
       if (isImprovement) {
         sched.rollNo = (rollMap && rollMap.get(sched.subjectCode)?.get(enrollmentNumber)) ?? s.rollNumber ?? null;
+        const matchingArr = seatingArrangements?.find(arr => {
+          if (!arr.subjectCode || arr.subjectCode.trim() !== sched.subjectCode.trim()) return false;
+          if (/^\d+$/.test(arr.fromEnrollment) && /^\d+$/.test(arr.toEnrollment) && sched.rollNo !== null && sched.rollNo !== undefined) {
+            return sched.rollNo >= parseInt(arr.fromEnrollment) && sched.rollNo <= parseInt(arr.toEnrollment);
+          }
+          return enrollmentNumber >= arr.fromEnrollment && enrollmentNumber <= arr.toEnrollment;
+        });
+        if (matchingArr) {
+          sched.blockDisplay = `${matchingArr.blockNumber} – ${matchingArr.classroom}`;
+        } else {
+          sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
+        }
+      } else {
+        sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
       }
-      sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
       return sched;
     })
     .filter(Boolean);
@@ -641,9 +672,10 @@ router.post('/generate-bulk/:examId', requireAdmin, async (req, res) => {
 
     const isImprovement = exam.type === 'IMPROVEMENT';
     const rollMap = isImprovement ? await getExamRollNumberMap(examId) : null;
+    const seatingArrangements = isImprovement ? await prisma.seatingArrangement.findMany({ where: { examId } }) : null;
 
     for (const enrollment of uniqueEnrollments) {
-      const result = await buildHallTicketForBulk(examId, enrollment, exam, rollMap);
+      const result = await buildHallTicketForBulk(examId, enrollment, exam, rollMap, seatingArrangements);
       if (result.error) {
         skippedStudents.push({ enrollmentNumber: enrollment, reason: result.error });
       } else {

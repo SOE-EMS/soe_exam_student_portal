@@ -28,17 +28,17 @@ router.post('/generate', requireAdmin, async (req, res) => {
 
     // Auto-detect subjects for the given date + time
     const parsedDate = new Date(date);
-    const scheduleWhere = {
-      examId,
-      examDate: {
-        gte: new Date(parsedDate.setHours(0, 0, 0, 0)),
-        lt: new Date(parsedDate.setHours(23, 59, 59, 999))
-      }
-    };
-    
-    let schedules = await prisma.examSchedule.findMany({
-      where: scheduleWhere,
+    const allSchedules = await prisma.examSchedule.findMany({
+      where: { examId },
       orderBy: { subjectCode: 'asc' },
+    });
+
+    let schedules = allSchedules.filter(s => {
+      const sDateStr = formatDate(s.examDate);
+      if (sDateStr === date) return true;
+      const d = new Date(s.examDate);
+      const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return localStr === date;
     });
 
     if (time && time.trim() && schedules.length > 0) {
@@ -99,6 +99,58 @@ router.post('/generate', requireAdmin, async (req, res) => {
       const eligibleStudents = studentSubjects
         .filter(ss => eligibleEnrollments.has(ss.examStudentData.enrollmentNumber))
         .map(ss => ss.examStudentData);
+
+      if (isImprovement) {
+        const subjectArrangements = await prisma.seatingArrangement.findMany({
+          where: { examId, subjectCode: schedule.subjectCode },
+          orderBy: { blockNumber: 'asc' },
+        });
+
+        if (subjectArrangements.length > 0) {
+          const totalBlocks = subjectArrangements.length;
+          subjectArrangements.forEach(arr => {
+            const arrStudents = eligibleStudents.filter(student => {
+              const r = rollMap ? rollMap.get(student.enrollmentNumber) : null;
+              if (/^\d+$/.test(arr.fromEnrollment) && /^\d+$/.test(arr.toEnrollment) && r !== null && r !== undefined) {
+                return r >= parseInt(arr.fromEnrollment) && r <= parseInt(arr.toEnrollment);
+              }
+              return student.enrollmentNumber >= arr.fromEnrollment && student.enrollmentNumber <= arr.toEnrollment;
+            });
+
+            if (arrStudents.length > 0) {
+              if (rollMap) {
+                arrStudents.sort((a, b) => (rollMap.get(a.enrollmentNumber) || 0) - (rollMap.get(b.enrollmentNumber) || 0));
+              } else {
+                arrStudents.sort((a, b) => a.enrollmentNumber.localeCompare(b.enrollmentNumber));
+              }
+
+              sections.push({
+                examDate: formatDate(schedule.examDate),
+                examTime: schedule.examTime || time || '—',
+                subjectCode: schedule.subjectCode,
+                subjectName: schedule.subjectName,
+                semester: arrStudents[0]?.semester || '—',
+                program: arrStudents[0]?.program || '—',
+                division: arrStudents[0]?.division || '—',
+                blockNumber: arr.blockNumber,
+                classroom: arr.classroom,
+                subjectBlock: arr.subjectBlock,
+                subjectBlockStr: arr.subjectBlockStr || (arr.subjectCode ? `${arr.subjectCode}(${arr.subjectBlock})` : String(arr.subjectBlock)),
+                totalBlocks,
+                isImprovement,
+                students: arrStudents.map(s => ({
+                  enrollmentNumber: s.enrollmentNumber,
+                  studentName: s.studentName,
+                  division: s.division,
+                  feesStatus: s.feesStatus,
+                  rollNo: rollMap ? (rollMap.get(s.enrollmentNumber) || null) : null,
+                })),
+              });
+            }
+          });
+          continue;
+        }
+      }
 
       // Group eligible students by block
       const blockAssignments = await prisma.blockAssignment.findMany({
@@ -163,8 +215,12 @@ router.post('/generate', requireAdmin, async (req, res) => {
 
     // Attach subjectBlock and totalBlocks to each section
     sections.forEach(section => {
-      section.subjectBlock = subjectBlockMap.get(section.blockNumber) || section.blockNumber;
-      section.totalBlocks = totalBlocks;
+      if (!section.subjectBlock) {
+        section.subjectBlock = subjectBlockMap.get(section.blockNumber) || section.blockNumber;
+      }
+      if (!section.totalBlocks) {
+        section.totalBlocks = totalBlocks;
+      }
     });
 
 
