@@ -37,13 +37,24 @@ async function getSubjectRollNumberMap(examId, subjectCode) {
     },
   });
 
+  const rollMap = new Map();
+  // Check if roll numbers are already stored in DB (e.g. from Excel upload)
+  studentSubjects.forEach(ss => {
+    const enr = ss.examStudentData?.enrollmentNumber;
+    if (enr && ss.rollNumber !== null && ss.rollNumber !== undefined) {
+      rollMap.set(enr, ss.rollNumber);
+    }
+  });
+
+  // For any missing, compute sequentially
   const distinctEnrollments = [...new Set(
     studentSubjects.map(ss => ss.examStudentData.enrollmentNumber).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-  const rollMap = new Map();
   distinctEnrollments.forEach((enrollment, index) => {
-    rollMap.set(enrollment, index + 1);
+    if (!rollMap.has(enrollment)) {
+      rollMap.set(enrollment, index + 1);
+    }
   });
 
   return rollMap;
@@ -76,6 +87,20 @@ async function getExamRollNumberMap(examId) {
     },
   });
 
+  const examRollMap = new Map();
+  studentSubjects.forEach(ss => {
+    const code = (ss.examSchedule?.subjectCode || '').trim();
+    const enrollment = ss.examStudentData?.enrollmentNumber;
+    if (!code || !enrollment) return;
+
+    if (!examRollMap.has(code)) {
+      examRollMap.set(code, new Map());
+    }
+    if (ss.rollNumber !== null && ss.rollNumber !== undefined) {
+      examRollMap.get(code).set(enrollment, ss.rollNumber);
+    }
+  });
+
   // Group enrollments by subject code
   const subjectEnrollments = new Map();
   for (const ss of studentSubjects) {
@@ -89,15 +114,18 @@ async function getExamRollNumberMap(examId) {
     subjectEnrollments.get(code).add(enrollment);
   }
 
-  // Create sequential 1-based roll numbers per subject
-  const examRollMap = new Map();
+  // Create sequential 1-based roll numbers for any unassigned
   for (const [code, enrollmentsSet] of subjectEnrollments.entries()) {
+    if (!examRollMap.has(code)) {
+      examRollMap.set(code, new Map());
+    }
+    const subMap = examRollMap.get(code);
     const sorted = Array.from(enrollmentsSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    const rollMap = new Map();
     sorted.forEach((enr, idx) => {
-      rollMap.set(enr, idx + 1);
+      if (!subMap.has(enr)) {
+        subMap.set(enr, idx + 1);
+      }
     });
-    examRollMap.set(code, rollMap);
   }
 
   return examRollMap;

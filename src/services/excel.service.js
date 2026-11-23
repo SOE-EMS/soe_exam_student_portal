@@ -27,34 +27,42 @@ async function generateSampleExcel(examId) {
   // Fixed columns
   const fixedColumns = [
     { header: 'Sr No', key: 'srNo', width: 8 },
-    { header: 'Academic Year', key: 'academicYear', width: 16 },
+    { header: 'Academic Year', key: 'academicYear', width: 22 },
     { header: 'Semester', key: 'semester', width: 12 },
     { header: 'Program', key: 'program', width: 12 },
-    { header: 'Enrollment', key: 'enrollment', width: 16 },
+    { header: 'Enrollment', key: 'enrollment', width: 18 },
     { header: 'Name', key: 'name', width: 28 },
     { header: 'Division', key: 'division', width: 12 },
     { header: 'Attendance %', key: 'attendance', width: 14 },
     { header: 'Fees Status', key: 'feesStatus', width: 14 },
-    { header: 'Student Email ID', key: 'studentEmailId', width: 24 },
+    { header: 'Student Email ID', key: 'studentEmailId', width: 26 },
+    { header: 'Time', key: 'time', width: 22 },
   ];
 
-  // Dynamic date columns (from existing schedules, or blank for new exam)
+  // Dynamic date columns with paired Roll No columns
   const dateColumns = [];
-  if (exam.schedules.length > 0) {
+  if (exam.schedules && exam.schedules.length > 0) {
     const uniqueDates = [...new Set(
       exam.schedules.map(s => formatDate(s.examDate))
     )];
     uniqueDates.forEach(date => {
-      dateColumns.push({ header: date, key: `date_${date}`, width: 18 });
+      const parts = date.split('-');
+      const dObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      const monStr = !isNaN(dObj) ? dObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : date;
+      
+      dateColumns.push({ header: date, key: `date_${date}`, width: 16 });
+      dateColumns.push({ header: `Roll No (${monStr})`, key: `roll_${date}`, width: 16 });
     });
+  } else {
+    dateColumns.push({ header: '24-11-2026', key: 'date_24-11-2026', width: 16 });
+    dateColumns.push({ header: 'Roll No (24 Nov)', key: 'roll_24-11-2026', width: 16 });
+    dateColumns.push({ header: '25-11-2026', key: 'date_25-11-2026', width: 16 });
+    dateColumns.push({ header: 'Roll No (25 Nov)', key: 'roll_25-11-2026', width: 16 });
+    dateColumns.push({ header: '26-11-2026', key: 'date_26-11-2026', width: 16 });
+    dateColumns.push({ header: 'Roll No (26 Nov)', key: 'roll_26-11-2026', width: 16 });
   }
 
-  // Trailing columns
-  const trailingColumns = [
-    { header: 'Time', key: 'time', width: 22 },
-  ];
-
-  dataSheet.columns = [...fixedColumns, ...dateColumns, ...trailingColumns];
+  dataSheet.columns = [...fixedColumns, ...dateColumns];
 
   // Style header row
   const headerRow = dataSheet.getRow(1);
@@ -68,38 +76,45 @@ async function generateSampleExcel(examId) {
   headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
   headerRow.height = 24;
 
-  // Add a sample row
-  const sampleRow = {
+  // Add sample rows
+  const sampleRow1 = {
     srNo: 1,
     academicYear: exam.academicYear.name,
-    semester: exam.semesters.length > 0 ? exam.semesters[0].semester : 3,
-    program: 'SOE',
-    enrollment: '26CV3X001',
-    name: 'Aarav Patel 001',
-    division: 'CV3',
+    semester: exam.semesters.length > 0 ? exam.semesters[0].semester : 1,
+    program: 'ICA',
+    enrollment: '26IC02AI001',
+    name: 'SIDRAH MALIK',
+    division: 'ICA2',
     attendance: 85,
     feesStatus: 'Paid',
-    studentEmailId: 'aarav@example.com',
-    time: '10:30AM TO 11:30 AM',
+    studentEmailId: '26IC02AI001@ppsu.ac.in',
+    time: '10:00 AM TO 1:00 PM',
   };
   const sampleRow2 = {
     srNo: 2,
     academicYear: exam.academicYear.name,
-    semester: exam.semesters.length > 0 ? exam.semesters[0].semester : 3,
-    program: 'SOE',
-    enrollment: '26CV3X002',
-    name: 'Vivaan Patel 002',
-    division: 'CV3',
-    attendance: 70,
+    semester: exam.semesters.length > 0 ? exam.semesters[0].semester : 1,
+    program: 'ICA',
+    enrollment: '26IC02AI002',
+    name: 'KAGZI MO ASIF ABDUL FARID',
+    division: 'ICA1',
+    attendance: 80,
     feesStatus: 'Paid',
-    studentEmailId: 'vivaan@example.com',
-    time: '01:30 PM TO 02:25 PM',
+    studentEmailId: '26IC02AI002@ppsu.ac.in',
+    time: '10:00 AM TO 1:00 PM',
   };
+
   dateColumns.forEach(col => {
-    sampleRow[col.key] = 'SECV2330 / CFLS2140';
-    sampleRow2[col.key] = 'SECV2330 / CFLS2140';
+    if (col.key.startsWith('date_')) {
+      sampleRow1[col.key] = 'ICASH1010';
+      sampleRow2[col.key] = 'ICACS1010';
+    } else if (col.key.startsWith('roll_')) {
+      sampleRow1[col.key] = 35;
+      sampleRow2[col.key] = 36;
+    }
   });
-  dataSheet.addRow(sampleRow);
+
+  dataSheet.addRow(sampleRow1);
   dataSheet.addRow(sampleRow2);
 
   // ─── INSTRUCTIONS SHEET ───
@@ -122,34 +137,35 @@ async function generateSampleExcel(examId) {
     '8. Division: e.g., G1D1, G1D2, etc.',
     '9. Student Email ID: Valid email address (e.g., student@example.com).',
     '',
-    'DATE COLUMNS:',
-    '─────────────',
-    '9. Each date column header represents an exam date (DD-MM-YYYY).',
-    '10. Enter the SUBJECT CODE under each date for the student.',
-    '11. You can add MORE date columns by simply adding new columns with date headers.',
-    '12. The system will dynamically detect all date-format columns.',
+    'DATE & ROLL NO COLUMNS:',
+    '───────────────────────',
+    '9. Each exam date column (DD-MM-YYYY) is paired with a Roll No column (e.g., Roll No (24 Nov)).',
+    '10. Under each date, enter the SUBJECT CODE (e.g., ICASH1010). Leave blank if not applying.',
+    '11. Under the Roll No column, enter the student\'s pre-assigned Roll No for that subject.',
+    '12. If Roll No is left blank, the system will auto-assign sequential Roll Numbers.',
+    '13. You can add more date and Roll No column pairs as needed.',
     '',
     'ATTENDANCE, FEES & EMAIL:',
     '────────────────────────',
-    '13. Attendance %: Number between 0-100.',
-    '14. Fees Status: "Paid" or "Unpaid".',
-    '15. Student Email ID: Must be a valid email format.',
+    '14. Attendance %: Number between 0-100.',
+    '15. Fees Status: "Paid" or "Unpaid".',
+    '16. Student Email ID: Must be a valid email format.',
     '',
     'TIME COLUMN:',
     '────────────',
-    '15. Time: e.g. "10:30AM TO 11:30 AM". Defines the exact exam time for the student.',
+    '17. Time: e.g. "10:00 AM TO 1:00 PM". Defines the exact exam time for the student.',
     '',
     'RE-UPLOAD RULES:',
     '────────────────',
-    '16. If an enrollment already exists, its data will be UPDATED.',
-    '17. If a cell is BLANK, the previous value is PRESERVED (not overwritten).',
-    '18. New enrollments will be CREATED.',
+    '18. If an enrollment already exists, its data will be UPDATED.',
+    '19. If a cell is BLANK, the previous value is PRESERVED (not overwritten).',
+    '20. New enrollments will be CREATED.',
     '',
     'IMPORTANT:',
     '──────────',
-    '19. Do NOT include macros or VBA.',
-    '20. Save as .xlsx format only.',
-    '21. Max file size: 10MB.',
+    '21. Do NOT include macros or VBA.',
+    '22. Save as .xlsx format only.',
+    '23. Max file size: 10MB.',
   ];
 
   instructions.forEach(text => {
@@ -331,7 +347,19 @@ async function parseAndValidateExcel(buffer, examId) {
 
   // Detect dynamic date columns (DD-MM-YYYY format)
   const datePattern = /^\d{2}-\d{2}-\d{4}$/;
-  const dateColumns = headers.filter(h => datePattern.test(h.value));
+  const dateColumns = [];
+  headers.forEach((h, idx) => {
+    if (datePattern.test(h.value)) {
+      let rollNoCol = null;
+      if (idx + 1 < headers.length) {
+        const nextHeader = headers[idx + 1];
+        if (/roll\s*no/i.test(nextHeader.value)) {
+          rollNoCol = nextHeader.col;
+        }
+      }
+      dateColumns.push({ col: h.col, value: h.value, rollNoCol });
+    }
+  });
   const fixedColMap = {};
   headers.forEach(h => {
     const key = h.value.toLowerCase().replace(/\s+/g, '');
@@ -398,11 +426,15 @@ async function parseAndValidateExcel(buffer, examId) {
       const subjectCode = getValue(dc.col);
       if (subjectCode) {
         const subCodes = subjectCode.split(/[/,;]/).map(s => s.trim()).filter(Boolean);
+        const rollVal = dc.rollNoCol ? getValue(dc.rollNoCol) : null;
+        const parsedRoll = rollVal && !isNaN(parseInt(rollVal)) ? parseInt(rollVal) : null;
+
         subCodes.forEach(code => {
           subjects.push({
             dateStr: dc.value,
             subjectCode: code,
             time: time,
+            rollNo: parsedRoll,
           });
         });
       }
@@ -679,9 +711,9 @@ async function commitExcelData(examId, parsedData, userId) {
         for (const subj of row.subjects) {
           const scheduleId = scheduleMap.get(`${subj.dateStr}_${subj.subjectCode}_${subj.time}`);
           if (scheduleId) {
-            const rollNo = (exam.type === 'IMPROVEMENT')
-              ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null)
-              : null;
+            const rollNo = (subj.rollNo !== null && subj.rollNo !== undefined)
+              ? subj.rollNo
+              : (exam.type === 'IMPROVEMENT' ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null) : null);
 
             subjectLinksToCreate.push({
               examStudentDataId: studentDataId,
@@ -774,9 +806,9 @@ async function commitExcelData(examId, parsedData, userId) {
       for (const subj of row.subjects) {
         const scheduleId = scheduleMap.get(`${subj.dateStr}_${subj.subjectCode}_${subj.time}`);
         if (scheduleId) {
-          const rollNo = (exam.type === 'IMPROVEMENT')
-            ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null)
-            : null;
+          const rollNo = (subj.rollNo !== null && subj.rollNo !== undefined)
+            ? subj.rollNo
+            : (exam.type === 'IMPROVEMENT' ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null) : null);
 
           await tx.studentExamSubject.upsert({
             where: {
