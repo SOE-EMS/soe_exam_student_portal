@@ -593,82 +593,167 @@ async function commitExcelData(examId, parsedData, userId) {
       }
     }
 
-    // CREATE new records
-    for (const row of newRecords) {
-      const studentData = await tx.examStudentData.create({
-        data: {
-          examId,
-          academicYear: row.academicYear || exam.academicYear.name,
-          semester: row.semester || 1,
-          program: row.program || '',
-          enrollmentNumber: row.enrollment,
-          studentName: row.name || '',
-          division: row.division || null,
-          attendancePercent: row.attendance,
-          feesStatus: row.feesStatus || null,
-          studentEmailId: row.studentEmailId || null,
+    // Pre-calculate subject roll numbers for Improvement Exams
+    const rollNumberMap = new Map(); // key: `${subjectCode}_${enrollmentNumber}` -> rollNo
+    if (exam.type === 'IMPROVEMENT') {
+      const subjectApplicants = new Map();
+      [...newRecords, ...updateRecords].forEach(row => {
+        row.subjects.forEach(s => {
+          if (s.subjectCode) {
+            if (!subjectApplicants.has(s.subjectCode)) {
+              subjectApplicants.set(s.subjectCode, new Set());
+            }
+            subjectApplicants.get(s.subjectCode).add(row.enrollment);
+          }
+        });
+      });
+
+      // Include any existing applications already in database
+      const existingSS = await tx.studentExamSubject.findMany({
+        where: { examSchedule: { examId } },
+        select: {
+          examSchedule: { select: { subjectCode: true } },
+          examStudentData: { select: { enrollmentNumber: true } },
         },
       });
-
-      // SYNC TO PROFILE IF EXISTS
-      const existingProfile = await tx.studentProfile.findUnique({
-        where: { enrollmentNumber: row.enrollment }
+      existingSS.forEach(ss => {
+        const code = ss.examSchedule?.subjectCode;
+        const enr = ss.examStudentData?.enrollmentNumber;
+        if (code && enr) {
+          if (!subjectApplicants.has(code)) subjectApplicants.set(code, new Set());
+          subjectApplicants.get(code).add(enr);
+        }
       });
-      if (existingProfile) {
-        const profileUpdateData = {};
-        if (row.name) profileUpdateData.name = row.name;
-        if (row.program) profileUpdateData.program = row.program;
-        if (row.semester) profileUpdateData.semester = row.semester;
-        if (row.division) profileUpdateData.division = row.division;
 
-        if (Object.keys(profileUpdateData).length > 0) {
-          await tx.studentProfile.update({
-            where: { id: existingProfile.id },
-            data: profileUpdateData
-          });
-        }
-        if (row.studentEmailId) {
-          await tx.user.update({
-            where: { id: existingProfile.userId },
-            data: { email: row.studentEmailId }
-          });
-        }
-      }
-
-      // Create subject links
-      for (const subj of row.subjects) {
-        const scheduleId = scheduleMap.get(`${subj.dateStr}_${subj.subjectCode}_${subj.time}`);
-        if (scheduleId) {
-          await tx.studentExamSubject.create({
-            data: {
-              examStudentDataId: studentData.id,
-              examScheduleId: scheduleId,
-            },
-          });
-        }
-      }
-
-      if (exam.type === 'IMPROVEMENT') {
-        await tx.eligibility.upsert({
-          where: { examId_enrollmentNumber: { examId, enrollmentNumber: row.enrollment } },
-          create: {
-            examId,
-            enrollmentNumber: row.enrollment,
-            studentProfileId: existingProfile?.id || null,
-            calculatedEligibility: 'ELIGIBLE',
-            finalEligibility: 'ELIGIBLE',
-          },
-          update: {},
+      for (const [code, enrollmentsSet] of subjectApplicants.entries()) {
+        const sorted = Array.from(enrollmentsSet).sort((a, b) =>
+          String(a).localeCompare(String(b), undefined, { numeric: true })
+        );
+        sorted.forEach((enr, idx) => {
+          rollNumberMap.set(`${code}_${enr}`, idx + 1);
         });
       }
-      created++;
     }
 
-    // UPDATE existing records (smart upsert: blank = no change)
+    // 1. CREATE new records in high-performance chunks
+    if (newRecords.length > 0) {
+      const studentDataList = newRecords.map(row => ({
+        examId,
+        academicYear: row.academicYear || exam.academicYear.name,
+        semester: row.semester || 1,
+        program: row.program || '',
+        enrollmentNumber: row.enrollment,
+        studentName: row.name || '',
+        division: row.division || null,
+        attendancePercent: row.attendance,
+        feesStatus: row.feesStatus || null,
+        studentEmailId: row.studentEmailId || null,
+      }));
+
+      for (let i = 0; i < studentDataList.length; i += 500) {
+        await tx.examStudentData.createMany({
+          data: studentDataList.slice(i, i + 500),
+          skipDuplicates: true,
+        });
+      }
+      created = newRecords.length;
+    }
+
+    // Fetch created/existing student IDs to map subjects
+    const allStudentData = await tx.examStudentData.findMany({
+      where: {
+        examId,
+        enrollmentNumber: { in: [...newRecords, ...updateRecords].map(r => r.enrollment) },
+      },
+      select: { id: true, enrollmentNumber: true },
+    });
+    const studentDataIdMap = new Map(allStudentData.map(s => [s.enrollmentNumber, s.id]));
+
+    // Batch insert StudentExamSubject for new records
+    if (newRecords.length > 0) {
+      const subjectLinksToCreate = [];
+      for (const row of newRecords) {
+        const studentDataId = studentDataIdMap.get(row.enrollment);
+        if (!studentDataId) continue;
+
+        for (const subj of row.subjects) {
+          const scheduleId = scheduleMap.get(`${subj.dateStr}_${subj.subjectCode}_${subj.time}`);
+          if (scheduleId) {
+            const rollNo = (exam.type === 'IMPROVEMENT')
+              ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null)
+              : null;
+
+            subjectLinksToCreate.push({
+              examStudentDataId: studentDataId,
+              examScheduleId: scheduleId,
+              rollNumber: rollNo,
+            });
+          }
+        }
+      }
+
+      for (let i = 0; i < subjectLinksToCreate.length; i += 500) {
+        await tx.studentExamSubject.createMany({
+          data: subjectLinksToCreate.slice(i, i + 500),
+          skipDuplicates: true,
+        });
+      }
+
+      // Batch insert Eligibility for Improvement Exam
+      if (exam.type === 'IMPROVEMENT') {
+        const eligibilityList = newRecords.map(row => ({
+          examId,
+          enrollmentNumber: row.enrollment,
+          calculatedEligibility: 'ELIGIBLE',
+          finalEligibility: 'ELIGIBLE',
+        }));
+
+        for (let i = 0; i < eligibilityList.length; i += 500) {
+          await tx.eligibility.createMany({
+            data: eligibilityList.slice(i, i + 500),
+            skipDuplicates: true,
+          });
+        }
+      }
+    }
+
+    // Link existing student profiles
+    const allEnrollments = [...newRecords, ...updateRecords].map(r => r.enrollment);
+    const existingProfiles = await tx.studentProfile.findMany({
+      where: { enrollmentNumber: { in: allEnrollments } },
+      select: { id: true, enrollmentNumber: true, userId: true },
+    });
+    const profileMap = new Map(existingProfiles.map(p => [p.enrollmentNumber, p]));
+
+    if (existingProfiles.length > 0) {
+      for (const prof of existingProfiles) {
+        await tx.eligibility.updateMany({
+          where: { examId, enrollmentNumber: prof.enrollmentNumber },
+          data: { studentProfileId: prof.id },
+        });
+
+        const row = [...newRecords, ...updateRecords].find(r => r.enrollment === prof.enrollmentNumber);
+        if (row) {
+          const profileUpdateData = {};
+          if (row.name) profileUpdateData.name = row.name;
+          if (row.program) profileUpdateData.program = row.program;
+          if (row.semester) profileUpdateData.semester = row.semester;
+          if (row.division) profileUpdateData.division = row.division;
+
+          if (Object.keys(profileUpdateData).length > 0) {
+            await tx.studentProfile.update({
+              where: { id: prof.id },
+              data: profileUpdateData,
+            });
+          }
+        }
+      }
+    }
+
+    // 2. UPDATE existing records (smart upsert: blank = no change)
     for (const row of updateRecords) {
       const updateData = {};
 
-      // Only update non-null/non-blank fields
       if (row.academicYear) updateData.academicYear = row.academicYear;
       if (row.semester) updateData.semester = row.semester;
       if (row.program) updateData.program = row.program;
@@ -683,37 +768,16 @@ async function commitExcelData(examId, parsedData, userId) {
           where: { id: row.existingId },
           data: updateData,
         });
-
-        // SYNC TO PROFILE IF EXISTS
-        const existingProfile = await tx.studentProfile.findUnique({
-          where: { enrollmentNumber: row.enrollment }
-        });
-        if (existingProfile) {
-          const profileUpdateData = {};
-          if (updateData.studentName !== undefined) profileUpdateData.name = updateData.studentName;
-          if (updateData.program !== undefined) profileUpdateData.program = updateData.program;
-          if (updateData.semester !== undefined) profileUpdateData.semester = updateData.semester;
-          if (updateData.division !== undefined) profileUpdateData.division = updateData.division;
-
-          if (Object.keys(profileUpdateData).length > 0) {
-            await tx.studentProfile.update({
-              where: { id: existingProfile.id },
-              data: profileUpdateData
-            });
-          }
-          if (updateData.studentEmailId !== undefined) {
-            await tx.user.update({
-              where: { id: existingProfile.userId },
-              data: { email: updateData.studentEmailId }
-            });
-          }
-        }
       }
 
       // Update subject links
       for (const subj of row.subjects) {
         const scheduleId = scheduleMap.get(`${subj.dateStr}_${subj.subjectCode}_${subj.time}`);
         if (scheduleId) {
+          const rollNo = (exam.type === 'IMPROVEMENT')
+            ? (rollNumberMap.get(`${subj.subjectCode}_${row.enrollment}`) || null)
+            : null;
+
           await tx.studentExamSubject.upsert({
             where: {
               examStudentDataId_examScheduleId: {
@@ -724,8 +788,11 @@ async function commitExcelData(examId, parsedData, userId) {
             create: {
               examStudentDataId: row.existingId,
               examScheduleId: scheduleId,
+              rollNumber: rollNo,
             },
-            update: {},
+            update: {
+              rollNumber: rollNo,
+            },
           });
         }
       }
@@ -741,15 +808,13 @@ async function commitExcelData(examId, parsedData, userId) {
           },
         });
 
-        const existingProfile = await tx.studentProfile.findUnique({
-          where: { enrollmentNumber: row.enrollment }
-        });
+        const prof = profileMap.get(row.enrollment);
         await tx.eligibility.upsert({
           where: { examId_enrollmentNumber: { examId, enrollmentNumber: row.enrollment } },
           create: {
             examId,
             enrollmentNumber: row.enrollment,
-            studentProfileId: existingProfile?.id || null,
+            studentProfileId: prof?.id || null,
             calculatedEligibility: 'ELIGIBLE',
             finalEligibility: 'ELIGIBLE',
           },
@@ -761,11 +826,10 @@ async function commitExcelData(examId, parsedData, userId) {
     }
 
     return { created, updated };
+  }, {
+    maxWait: 15000,
+    timeout: 120000,
   });
-
-  if (exam.type === 'IMPROVEMENT') {
-    await syncRollNumbersToDatabase(examId);
-  }
 
   return result;
 }

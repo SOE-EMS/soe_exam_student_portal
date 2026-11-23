@@ -132,17 +132,24 @@ async function syncRollNumbersToDatabase(examId) {
     },
   });
 
+  const updates = [];
   for (const ss of studentSubjects) {
     const code = (ss.examSchedule?.subjectCode || '').trim();
     const enrollment = ss.examStudentData?.enrollmentNumber;
     const rollNo = examRollMap.get(code)?.get(enrollment) || null;
 
     if (rollNo && ss.rollNumber !== rollNo) {
-      await prisma.studentExamSubject.update({
-        where: { id: ss.id },
-        data: { rollNumber: rollNo },
-      });
+      updates.push(
+        prisma.studentExamSubject.update({
+          where: { id: ss.id },
+          data: { rollNumber: rollNo },
+        })
+      );
     }
+  }
+
+  for (let i = 0; i < updates.length; i += 50) {
+    await Promise.all(updates.slice(i, i + 50));
   }
 }
 

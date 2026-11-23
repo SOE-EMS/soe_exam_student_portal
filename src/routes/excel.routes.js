@@ -124,9 +124,9 @@ router.post('/confirm/:examId', requireAdmin, async (req, res) => {
       updated: result.updated,
     });
   } catch (error) {
-    console.error('[Excel] Confirm error:', error.message);
+    console.error('[Excel] Confirm error:', error);
     res.status(500).json({
-      error: 'Upload failed. All changes have been rolled back.',
+      error: error.message ? `Upload failed: ${error.message}` : 'Upload failed. All changes have been rolled back.',
     });
   }
 });
