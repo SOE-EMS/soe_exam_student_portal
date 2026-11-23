@@ -339,10 +339,9 @@ router.get('/dates/:examId', requireAdmin, async (req, res) => {
       const d = formatDate(s.examDate);
       datesSet.add(d);
       if (!dateTimesMap[d]) dateTimesMap[d] = new Set();
-      if (s.examTime && s.examTime.trim()) {
-        dateTimesMap[d].add(s.examTime.trim());
-        allTimesSet.add(s.examTime.trim());
-      }
+      const timeVal = (s.examTime && s.examTime.trim()) ? s.examTime.trim() : '10:30 AM TO 11:30 AM';
+      dateTimesMap[d].add(timeVal);
+      allTimesSet.add(timeVal);
     });
 
     const dates = Array.from(datesSet).sort();

@@ -412,7 +412,7 @@ async function parseAndValidateExcel(buffer, examId) {
     const timeRaw = getValue(fixedColMap['time']);
     
     function normalizeTime(t) {
-      if (!t) return '';
+      if (!t) return '10:30 AM TO 11:30 AM';
       return String(t)
         .toUpperCase()
         .replace(/([0-9])([AP]M)/g, '$1 $2') // Add space before AM/PM
@@ -598,7 +598,7 @@ async function commitExcelData(examId, parsedData, userId) {
 
       for (const [item, subjectName] of subjectDetails.entries()) {
         const [subjectCode, time] = item.split('::');
-        const examTime = time || ''; // Use empty string if no time
+        const examTime = time || '10:30 AM TO 11:30 AM';
         const resolvedName = subjectName || subjectCode; // fallback to code if null
         
         const schedule = await tx.examSchedule.upsert({

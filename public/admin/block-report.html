@@ -208,10 +208,15 @@
           const blob = await res.blob();
           const objUrl = URL.createObjectURL(blob);
           const a = document.createElement('a');
+          a.style.display = 'none';
           a.href = objUrl;
           a.download = `block_report_${date}.pdf`;
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(objUrl);
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(objUrl);
+          }, 1000);
           showAlert('PDF Generated Successfully.', 'success');
         } else {
           const data = await res.json();
