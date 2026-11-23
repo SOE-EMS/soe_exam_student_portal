@@ -8,9 +8,29 @@ async function generateBlockReportPDF(sections, examInfo) {
       const margin = 30;
       const doc = new PDFDocument({ size: 'A4', margin: margin, layout: 'portrait' });
       
-      const fontDir = path.join(__dirname, '../../../public/assets/fonts');
-      if (fs.existsSync(path.join(fontDir, 'cambria.ttc'))) doc.registerFont('Cambria', path.join(fontDir, 'cambria.ttc'), 'Cambria');
-      if (fs.existsSync(path.join(fontDir, 'cambriab.ttf'))) doc.registerFont('Cambria-Bold', path.join(fontDir, 'cambriab.ttf'));
+      let fontRegular = 'Helvetica';
+      let fontBold = 'Helvetica-Bold';
+
+      const possibleFontDirs = [
+        path.join(__dirname, '../../../public/assets/fonts'),
+        path.join(process.cwd(), 'public/assets/fonts'),
+        path.join(__dirname, '../../public/assets/fonts'),
+      ];
+
+      for (const dir of possibleFontDirs) {
+        try {
+          if (fs.existsSync(path.join(dir, 'cambria.ttc')) && fontRegular === 'Helvetica') {
+            doc.registerFont('Cambria', path.join(dir, 'cambria.ttc'), 'Cambria');
+            fontRegular = 'Cambria';
+          }
+          if (fs.existsSync(path.join(dir, 'cambriab.ttf')) && fontBold === 'Helvetica-Bold') {
+            doc.registerFont('Cambria-Bold', path.join(dir, 'cambriab.ttf'));
+            fontBold = 'Cambria-Bold';
+          }
+        } catch (fontErr) {
+          console.warn('[PDF] Font registration error:', fontErr.message);
+        }
+      }
 
       const chunks = [];
 
@@ -22,21 +42,26 @@ async function generateBlockReportPDF(sections, examInfo) {
       const pageHeight = 841.89;
       const contentWidth = pageWidth - 2 * margin; // 535.28
 
-      const logoPath = path.join(__dirname, '../../../public/assets/ppsu-logo-naac.png');
+      const possibleLogoPaths = [
+        path.join(__dirname, '../../../public/assets/ppsu-logo-naac.png'),
+        path.join(process.cwd(), 'public/assets/ppsu-logo-naac.png'),
+        path.join(__dirname, '../../public/assets/ppsu-logo-naac.png'),
+      ];
+      const logoPath = possibleLogoPaths.find(p => fs.existsSync(p));
       const maxLogoWidth = 140; // slightly smaller so it fits well
       const maxLogoHeight = 40;
 
       // Draw Header Helper
       const drawHeader = (section, isContinuation = false) => {
         // Logo
-        if (fs.existsSync(logoPath)) {
+        if (logoPath && fs.existsSync(logoPath)) {
           doc.image(logoPath, margin, margin, { fit: [maxLogoWidth, maxLogoHeight], align: 'left', valign: 'top' });
         } else {
-          doc.fontSize(12).font('Cambria-Bold').text('PPSU NAAC A+', margin, margin, { width: maxLogoWidth });
+          doc.fontSize(12).font(fontBold).text('PPSU NAAC A+', margin, margin, { width: maxLogoWidth });
         }
 
         // Title right aligned
-        doc.fontSize(12).font('Cambria-Bold')
+        doc.fontSize(12).font(fontBold)
            .text('Internal Assessment Attendance Signature List', margin, margin + 15, { align: 'right', width: contentWidth });
         
         // Line separator
@@ -54,26 +79,26 @@ async function generateBlockReportPDF(sections, examInfo) {
         doc.fontSize(10);
         
         // Row 1: ExamName + Course
-        doc.font('Cambria-Bold').text('ExamName :- ', leftCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.program || ''} | Sem-${section.semester || ''} | ${examInfo.examName || ''} | ${examInfo.academicYear || ''}`);
+        doc.font(fontBold).text('ExamName :- ', leftCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.program || ''} | Sem-${section.semester || ''} | ${examInfo.examName || ''} | ${examInfo.academicYear || ''}`);
         
-        doc.font('Cambria-Bold').text('Course :- ', rightCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.subjectCode || ''} - ${section.subjectName || ''}`);
+        doc.font(fontBold).text('Course :- ', rightCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.subjectCode || ''} - ${section.subjectName || ''}`);
         
         y += 15;
         // Row 2: Subject Block + Block No.
         const subjectBlockDisplay = section.subjectBlock && section.totalBlocks
           ? `${section.subjectBlock} of ${section.totalBlocks}`
           : `${section.blockNumber || ''}`;
-        doc.font('Cambria-Bold').text('Subject Block :- ', leftCol, y, { continued: true });
-        doc.font('Cambria').text(subjectBlockDisplay);
+        doc.font(fontBold).text('Subject Block :- ', leftCol, y, { continued: true });
+        doc.font(fontRegular).text(subjectBlockDisplay);
         
-        doc.font('Cambria-Bold').text('Block No. :- ', rightCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.blockNumber || ''}`);
+        doc.font(fontBold).text('Block No. :- ', rightCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.blockNumber || ''}`);
 
         y += 15;
         // Row 3: ExamDate + Time
-        doc.font('Cambria-Bold').text('ExamDate :- ', leftCol, y, { continued: true });
+        doc.font(fontBold).text('ExamDate :- ', leftCol, y, { continued: true });
         
         let formattedDate = section.examDate || '';
         if (formattedDate) {
@@ -85,23 +110,23 @@ async function generateBlockReportPDF(sections, examInfo) {
           }
         }
         
-        doc.font('Cambria').text(formattedDate);
+        doc.font(fontRegular).text(formattedDate);
         
-        doc.font('Cambria-Bold').text('Time :- ', rightCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.examTime || ''}`);
+        doc.font(fontBold).text('Time :- ', rightCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.examTime || ''}`);
 
         y += 15;
         // Row 4: Room No. + Program
-        doc.font('Cambria-Bold').text('Room No. :- ', leftCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.classroom || ''}`);
+        doc.font(fontBold).text('Room No. :- ', leftCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.classroom || ''}`);
         
-        doc.font('Cambria-Bold').text('Program :- ', rightCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.program || ''}`);
+        doc.font(fontBold).text('Program :- ', rightCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.program || ''}`);
 
         y += 15;
         // Row 5: Semester
-        doc.font('Cambria-Bold').text('Semester :- ', leftCol, y, { continued: true });
-        doc.font('Cambria').text(`${section.semester || ''}`);
+        doc.font(fontBold).text('Semester :- ', leftCol, y, { continued: true });
+        doc.font(fontRegular).text(`${section.semester || ''}`);
 
         y += 20;
         return y; // Returns the starting Y for the table
@@ -142,7 +167,7 @@ async function generateBlockReportPDF(sections, examInfo) {
         
         headers.forEach((header, i) => {
           doc.rect(colX, startY, colWidths[i], rowHeight).stroke();
-          doc.font('Cambria-Bold').fontSize(9)
+          doc.font(fontBold).fontSize(9)
              .text(header, colX + 2, startY + 5, { width: colWidths[i] - 4, align: 'left' });
           colX += colWidths[i];
         });
@@ -195,7 +220,7 @@ async function generateBlockReportPDF(sections, examInfo) {
               ];
 
           doc.lineWidth(0.5).strokeColor('#000000');
-          doc.font('Cambria').fontSize(9);
+          doc.font(fontRegular).fontSize(9);
 
           rowData.forEach((cell, i) => {
             doc.rect(colX, rowY, colWidths[i], rowHeight).stroke();
@@ -218,7 +243,7 @@ async function generateBlockReportPDF(sections, examInfo) {
           rowY += 20; // Margin before footer
         }
 
-        doc.fontSize(10).font('Cambria');
+        doc.fontSize(10).font(fontRegular);
         const fCol1 = margin;
         const fCol2 = margin + 340;
         

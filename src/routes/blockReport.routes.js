@@ -293,8 +293,8 @@ router.post('/generate', requireAdmin, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=block_report_${date}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('[BlockReport] Generate error:', error.message);
-    res.status(500).json({ error: 'Failed to generate block report.' });
+    console.error('[BlockReport] Generate error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate block report.' });
   }
 });
 
