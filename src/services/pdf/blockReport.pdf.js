@@ -2,6 +2,12 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+// Ensure Vercel Node File Trace (@vercel/nft) bundles PDFKit standard fonts
+try {
+  require('pdfkit/standard-fonts/Helvetica');
+  require('pdfkit/standard-fonts/HelveticaBold');
+} catch (_) {}
+
 async function generateBlockReportPDF(sections, examInfo) {
   return new Promise((resolve, reject) => {
     try {

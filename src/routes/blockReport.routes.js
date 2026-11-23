@@ -248,6 +248,14 @@ router.post('/generate', requireAdmin, async (req, res) => {
     // ──────────────────────────────────────────────
     const allEligibleEnrollments = Array.from(globalEligibleEnrollments);
     await prisma.$transaction(async (tx) => {
+      // Clean up previous generations for this date so old stale records do not linger
+      await tx.blockReportGeneration.deleteMany({
+        where: {
+          examId,
+          examDate: parsedDate,
+        }
+      });
+
       const generation = await tx.blockReportGeneration.create({
         data: {
           examId,
@@ -304,16 +312,30 @@ router.post('/generate', requireAdmin, async (req, res) => {
 
 router.get('/status/:examId', requireAdmin, async (req, res) => {
   try {
-    const outdatedCount = await prisma.blockReportGeneration.count({
-      where: {
-        examId: req.params.examId,
-        isOutdated: true,
-      },
+    const generations = await prisma.blockReportGeneration.findMany({
+      where: { examId: req.params.examId },
+      orderBy: { createdAt: 'desc' },
     });
 
+    if (generations.length === 0) {
+      return res.json({ hasOutdated: false, outdatedCount: 0 });
+    }
+
+    const seenDates = new Set();
+    const latestGenerations = [];
+    for (const g of generations) {
+      const d = formatDate(g.examDate);
+      if (!seenDates.has(d)) {
+        seenDates.add(d);
+        latestGenerations.push(g);
+      }
+    }
+
+    const outdatedList = latestGenerations.filter(g => g.isOutdated);
+
     res.json({
-      hasOutdated: outdatedCount > 0,
-      outdatedCount,
+      hasOutdated: outdatedList.length > 0,
+      outdatedCount: outdatedList.length,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to check block report status.' });

@@ -148,6 +148,20 @@
     }
     loadExams();
 
+        async function checkStatus(examId) {
+      if (!examId) {
+        document.getElementById('outdatedBanner').style.display = 'none';
+        return;
+      }
+      try {
+        const r = await fetch(`/api/block-report/status/${examId}`);
+        const data = await r.json();
+        document.getElementById('outdatedBanner').style.display = data.hasOutdated ? 'block' : 'none';
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     async function loadDates() {
       const examId = document.getElementById('examSelect').value;
       const dateSelect = document.getElementById('dateSelect');
@@ -161,13 +175,7 @@
       }
       
       try {
-        // Check for outdated status
-        fetch(`/api/block-report/status/${examId}`)
-          .then(r => r.json())
-          .then(data => {
-            document.getElementById('outdatedBanner').style.display = data.hasOutdated ? 'block' : 'none';
-          })
-          .catch(e => console.error(e));
+        checkStatus(examId);
 
         const res = await fetch(`/api/block-report/dates/${examId}`);
         const data = await res.json();
@@ -218,6 +226,7 @@
             URL.revokeObjectURL(objUrl);
           }, 1000);
           showAlert('PDF Generated Successfully.', 'success');
+          checkStatus(examId);
         } else {
           const data = await res.json();
           showAlert(data.error || 'Failed to generate report.');

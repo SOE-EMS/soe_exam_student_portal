@@ -6,6 +6,12 @@ const http = require('http');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 
+// Ensure Vercel Node File Trace (@vercel/nft) bundles PDFKit standard fonts
+try {
+  require('pdfkit/standard-fonts/Helvetica');
+  require('pdfkit/standard-fonts/HelveticaBold');
+} catch (_) {}
+
 /**
  * Check if string contains Indic characters (Devanagari, Gujarati, Bengali, etc.)
  */
