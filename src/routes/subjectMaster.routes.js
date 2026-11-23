@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
-const { excelUpload } = require('../middleware/fileUpload');
+const { excelUpload, handleMulterError } = require('../middleware/fileUpload');
 const ExcelJS = require('exceljs');
 
 // ──────────────────────────────────────────────
@@ -22,7 +22,7 @@ router.get('/', requireAdmin, async (req, res) => {
       ];
     }
     if (program) where.program = program;
-    if (semester) where.semester = parseInt(semester);
+    if (semester && !isNaN(parseInt(semester))) where.semester = parseInt(semester);
     if (status) {
       where.isActive = status === 'active';
     }
@@ -152,7 +152,18 @@ router.get('/lookup', requireAdmin, async (req, res) => {
 // UPLOAD EXCEL
 // ──────────────────────────────────────────────
 
-router.post('/upload', requireAdmin, excelUpload.single('file'), async (req, res) => {
+function extractCellValue(cell) {
+  if (!cell || cell.value === null || cell.value === undefined) return null;
+  const val = cell.value;
+  if (typeof val === 'object') {
+    if (val.result !== undefined && val.result !== null) return String(val.result).trim();
+    if (val.text !== undefined && val.text !== null) return String(val.text).trim();
+    if (Array.isArray(val.richText)) return val.richText.map(t => t.text || '').join('').trim();
+  }
+  return String(val).trim();
+}
+
+router.post('/upload', requireAdmin, excelUpload.single('file'), handleMulterError, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded.' });
@@ -171,10 +182,10 @@ router.post('/upload', requireAdmin, excelUpload.single('file'), async (req, res
     const firstRow = worksheet.getRow(1);
     
     firstRow.eachCell((cell, colNumber) => {
-      const val = String(cell.value || '').trim().toLowerCase();
+      const val = (extractCellValue(cell) || '').toLowerCase();
       if (val.includes('code')) headers.subjectCode = colNumber;
       else if (val.includes('name')) headers.subjectName = colNumber;
-      else if (val.includes('program')) headers.program = colNumber;
+      else if (val.includes('program') || val.includes('branch') || val.includes('course')) headers.program = colNumber;
       else if (val.includes('sem')) headers.semester = colNumber;
     });
 
@@ -188,22 +199,20 @@ router.post('/upload', requireAdmin, excelUpload.single('file'), async (req, res
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // skip header
 
-      const getVal = (col) => {
-        if (!col) return null;
-        const cell = row.getCell(col);
-        return cell.value ? String(cell.value).trim() : null;
-      };
-
-      const subjectCode = getVal(headers.subjectCode);
-      const subjectName = getVal(headers.subjectName);
+      const subjectCode = extractCellValue(row.getCell(headers.subjectCode));
+      const subjectName = extractCellValue(row.getCell(headers.subjectName));
       
+      if (!subjectCode && !subjectName) {
+        return; // skip empty rows
+      }
+
       if (!subjectCode || !subjectName) {
         errors.push(`Row ${rowNumber}: Missing Subject Code or Name`);
         return;
       }
 
-      const program = getVal(headers.program);
-      const semesterRaw = getVal(headers.semester);
+      const program = headers.program ? extractCellValue(row.getCell(headers.program)) : null;
+      const semesterRaw = headers.semester ? extractCellValue(row.getCell(headers.semester)) : null;
       const semester = semesterRaw ? parseInt(semesterRaw) : null;
 
       subjects.push({
@@ -218,34 +227,32 @@ router.post('/upload', requireAdmin, excelUpload.single('file'), async (req, res
       return res.status(400).json({ error: 'No valid data rows found.', rowErrors: errors });
     }
 
-    // Upsert all subjects
+    // Upsert all subjects sequentially to avoid PgBouncer transaction-mode connection pooler issues
     let added = 0;
     let updated = 0;
 
-    await prisma.$transaction(async (tx) => {
-      for (const sub of subjects) {
-        const existing = await tx.subjectMaster.findUnique({
-          where: { subjectCode: sub.subjectCode }
-        });
+    for (const sub of subjects) {
+      const existing = await prisma.subjectMaster.findUnique({
+        where: { subjectCode: sub.subjectCode },
+      });
 
-        if (existing) {
-          await tx.subjectMaster.update({
-            where: { id: existing.id },
-            data: {
-              subjectName: sub.subjectName,
-              program: sub.program || existing.program,
-              semester: sub.semester || existing.semester,
-            }
-          });
-          updated++;
-        } else {
-          await tx.subjectMaster.create({
-            data: sub
-          });
-          added++;
-        }
+      if (existing) {
+        await prisma.subjectMaster.update({
+          where: { id: existing.id },
+          data: {
+            subjectName: sub.subjectName,
+            program: sub.program || existing.program,
+            semester: sub.semester !== null ? sub.semester : existing.semester,
+          },
+        });
+        updated++;
+      } else {
+        await prisma.subjectMaster.create({
+          data: sub,
+        });
+        added++;
       }
-    });
+    }
 
     res.json({
       message: 'Upload successful',
@@ -255,7 +262,7 @@ router.post('/upload', requireAdmin, excelUpload.single('file'), async (req, res
 
   } catch (error) {
     console.error('[SubjectMaster] Upload error:', error);
-    res.status(500).json({ error: 'Failed to process Excel file. Ensure it is a valid .xlsx format.' });
+    res.status(500).json({ error: error.message || 'Failed to process Excel file. Ensure it is a valid .xlsx format.' });
   }
 });
 
@@ -282,11 +289,12 @@ router.get('/sample', requireAdmin, async (req, res) => {
     worksheet.addRow({ code: 'CFLS2140', name: 'Communication Skills', program: 'B.Tech', semester: 2 });
     worksheet.addRow({ code: 'MATH1010', name: 'Engineering Mathematics', program: 'B.Tech', semester: 1 });
 
+    const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=Subject_Master_Sample.xlsx');
+    res.setHeader('Content-Length', buffer.length);
     
-    await workbook.xlsx.write(res);
-    res.end();
+    res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('[SubjectMaster] Download sample error:', error);
     res.status(500).send('Failed to generate sample file');

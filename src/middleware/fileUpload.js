@@ -8,6 +8,9 @@ const MAX_EXCEL_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_EXCEL_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
   'application/vnd.ms-excel', // .xls
+  'application/octet-stream',
+  'application/x-zip-compressed',
+  'application/zip',
 ];
 
 /**

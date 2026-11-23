@@ -103,6 +103,11 @@ app.get('/admin/:page', (req, res) => {
   });
 });
 
+// Master Data alias routes
+app.get(['/master-data/subjects', '/master-data/subjects/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'subject-master.html'));
+});
+
 // Student pages
 app.get('/student/:page', (req, res) => {
   const page = req.params.page || 'login';
