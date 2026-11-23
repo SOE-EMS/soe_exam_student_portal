@@ -208,7 +208,17 @@ async function drawHallTicketPage(doc, studentData, examInfo, schedules, blockIn
   // ==========================================
   let currentY = tableBottom + 15;
 
-  const cols = [
+  const isImprovement = Boolean(examInfo?.isImprovement);
+
+  const cols = isImprovement ? [
+    { label: 'Exam Date', width: 65, align: 'center' },
+    { label: 'Roll No.', width: 40, align: 'center' },
+    { label: 'Course Code', width: 55, align: 'center' },
+    { label: 'Course Name', width: 130, align: 'left' },
+    { label: 'Exam Time', width: 80, align: 'center' },
+    { label: 'Block / Room', width: 60, align: 'center' },
+    { label: "Supervisor's\nSign", width: 85.28, align: 'center' },
+  ] : [
     { label: 'Course\nCode', width: 60, align: 'center' },
     { label: 'Course Name', width: 130, align: 'left' },
     { label: 'Exam Date', width: 65, align: 'center' },
@@ -235,7 +245,15 @@ async function drawHallTicketPage(doc, studentData, examInfo, schedules, blockIn
   doc.font('Cambria').fontSize(9);
 
   schedules.forEach(schedule => {
-    const rowData = [
+    const rowData = isImprovement ? [
+      String(formatDateForPDF(schedule.examDate)),
+      String(schedule.rollNo !== null && schedule.rollNo !== undefined ? schedule.rollNo : '—'),
+      String(schedule.subjectCode || ''),
+      String(schedule.subjectName || ''),
+      String(formatTime(schedule.examTime)),
+      String(schedule.blockDisplay || (blockInfo ? `${blockInfo.blockNumber} – ${blockInfo.classroom}` : (blockInfo?.classroom || '—'))),
+      '',
+    ] : [
       String(schedule.subjectCode || ''),
       String(schedule.subjectName || ''),
       String(formatDateForPDF(schedule.examDate)),
@@ -257,7 +275,7 @@ async function drawHallTicketPage(doc, studentData, examInfo, schedules, blockIn
       const textH = doc.heightOfString(rowData[i], { width: col.width - 6, align: col.align });
       const yOffset = (rowH - textH) / 2;
 
-      const isSubIndic = i === 1 && containsIndic(rowData[i]) && hasIndicFont;
+      const isSubIndic = ((isImprovement && i === 3) || (!isImprovement && i === 1)) && containsIndic(rowData[i]) && hasIndicFont;
       doc.font(isSubIndic ? 'Nirmala' : 'Cambria').text(rowData[i], cX + 3, currentY + yOffset, { width: col.width - 6, align: col.align });
       doc.font('Cambria');
 

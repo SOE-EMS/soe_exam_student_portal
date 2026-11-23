@@ -8,6 +8,7 @@ const {
   generateBulkHallTicketPDF,
   verifyTicketToken,
 } = require('../services/pdf/hallTicket.pdf');
+const { getExamRollNumberMap } = require('../services/rollNumber.service');
 const {
   computeCacheKey,
   getCachedPDF,
@@ -283,8 +284,24 @@ async function buildHallTicket(examId, enrollmentNumber) {
     where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
   });
 
+  const isImprovement = exam.type === 'IMPROVEMENT';
+  let rollMap = null;
+  if (isImprovement) {
+    rollMap = await getExamRollNumberMap(examId);
+  }
+
   // Get schedules for this student
-  const schedules = studentData.subjects.map(s => s.examSchedule).filter(Boolean);
+  const schedules = studentData.subjects
+    .map(s => {
+      if (!s.examSchedule) return null;
+      const sched = { ...s.examSchedule };
+      if (isImprovement) {
+        sched.rollNo = (rollMap && rollMap.get(sched.subjectCode)?.get(enrollmentNumber)) ?? s.rollNumber ?? null;
+      }
+      sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
+      return sched;
+    })
+    .filter(Boolean);
   schedules.sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
 
   // Check PDF Cache (Exam-Eve Rush Optimization)
@@ -315,6 +332,7 @@ async function buildHallTicket(examId, enrollmentNumber) {
       name: exam.name,
       examName: exam.name,
       academicYear: exam.academicYear.name,
+      isImprovement,
     },
     schedules,
     blockAssignment,
@@ -332,7 +350,7 @@ async function buildHallTicket(examId, enrollmentNumber) {
  * Skips block report check — admin generation doesn't require finalized block report
  * Still enforces: finalEligibility, seating, schedule
  */
-async function buildHallTicketForBulk(examId, enrollmentNumber, exam) {
+async function buildHallTicketForBulk(examId, enrollmentNumber, exam, rollMap = null) {
   // Check eligibility
   const eligibility = await prisma.eligibility.findUnique({
     where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
@@ -356,8 +374,23 @@ async function buildHallTicketForBulk(examId, enrollmentNumber, exam) {
   });
   if (!blockAssignment) return { error: 'Missing block/seating assignment', enrollmentNumber };
 
+  const isImprovement = exam.type === 'IMPROVEMENT';
+  if (isImprovement && !rollMap) {
+    rollMap = await getExamRollNumberMap(examId);
+  }
+
   // Get schedules
-  const schedules = studentData.subjects.map(s => s.examSchedule).filter(Boolean);
+  const schedules = studentData.subjects
+    .map(s => {
+      if (!s.examSchedule) return null;
+      const sched = { ...s.examSchedule };
+      if (isImprovement) {
+        sched.rollNo = (rollMap && rollMap.get(sched.subjectCode)?.get(enrollmentNumber)) ?? s.rollNumber ?? null;
+      }
+      sched.blockDisplay = blockAssignment ? `${blockAssignment.blockNumber} – ${blockAssignment.classroom}` : (blockAssignment?.classroom || '—');
+      return sched;
+    })
+    .filter(Boolean);
   if (schedules.length === 0) return { error: 'Missing exam schedule', enrollmentNumber };
   schedules.sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
 
@@ -375,8 +408,12 @@ async function buildHallTicketForBulk(examId, enrollmentNumber, exam) {
       division: studentData.division,
     },
     examInfo: {
+      id: exam.id,
+      examId: exam.id,
+      name: exam.name,
       examName: exam.name,
       academicYear: exam.academicYear.name,
+      isImprovement,
     },
     schedules,
     blockInfo: blockAssignment,
@@ -602,8 +639,11 @@ router.post('/generate-bulk/:examId', requireAdmin, async (req, res) => {
     const generatedStudents = [];
     const skippedStudents = [];
 
+    const isImprovement = exam.type === 'IMPROVEMENT';
+    const rollMap = isImprovement ? await getExamRollNumberMap(examId) : null;
+
     for (const enrollment of uniqueEnrollments) {
-      const result = await buildHallTicketForBulk(examId, enrollment, exam);
+      const result = await buildHallTicketForBulk(examId, enrollment, exam, rollMap);
       if (result.error) {
         skippedStudents.push({ enrollmentNumber: enrollment, reason: result.error });
       } else {

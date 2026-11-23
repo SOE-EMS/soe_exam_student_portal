@@ -11,7 +11,7 @@ const { logAudit } = require('../services/audit.service');
 
 router.post('/', requireAdmin, validate(examSchema), async (req, res) => {
   try {
-    const { name, academicYearId, semesters } = req.validatedBody;
+    const { name, academicYearId, semesters, type } = req.validatedBody;
 
     // Verify academic year exists
     const ay = await prisma.academicYear.findUnique({ where: { id: academicYearId } });
@@ -22,6 +22,7 @@ router.post('/', requireAdmin, validate(examSchema), async (req, res) => {
         data: {
           name,
           academicYearId,
+          type: type || 'REGULAR',
           isActive: true,
         },
       });
@@ -67,9 +68,10 @@ router.post('/', requireAdmin, validate(examSchema), async (req, res) => {
 
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const { academicYearId } = req.query;
+    const { academicYearId, type } = req.query;
     const where = {};
     if (academicYearId) where.academicYearId = academicYearId;
+    if (type) where.type = type;
 
     const exams = await prisma.exam.findMany({
       where,
@@ -131,12 +133,14 @@ router.get('/:id', requireAdmin, async (req, res) => {
 router.put('/:id', requireAdmin, validate(examSchema), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, academicYearId, semesters } = req.validatedBody;
+    const { name, academicYearId, semesters, type } = req.validatedBody;
 
     const exam = await prisma.$transaction(async (tx) => {
+      const updateData = { name, academicYearId };
+      if (type) updateData.type = type;
       const updated = await tx.exam.update({
         where: { id },
-        data: { name, academicYearId },
+        data: updateData,
       });
 
       // Replace semesters

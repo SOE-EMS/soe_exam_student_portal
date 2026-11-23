@@ -1,5 +1,6 @@
 const ExcelJS = require('exceljs');
 const prisma = require('../config/database');
+const { syncRollNumbersToDatabase } = require('./rollNumber.service');
 
 /**
  * Generate sample Excel template for an exam
@@ -486,17 +487,39 @@ async function parseAndValidateExcel(buffer, examId) {
     }
   });
 
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: { id: true, name: true, type: true },
+  });
+
+  let totalApplications = 0;
+  const subjectApplicationCounts = {};
+  const dateApplicationCounts = {};
+
+  rows.forEach(r => {
+    r.subjects.forEach(s => {
+      totalApplications++;
+      subjectApplicationCounts[s.subjectCode] = (subjectApplicationCounts[s.subjectCode] || 0) + 1;
+      dateApplicationCounts[s.dateStr] = (dateApplicationCounts[s.dateStr] || 0) + 1;
+    });
+  });
+
   return {
     valid: errors.length === 0,
     errors,
     dateColumns: dateColumns.map(dc => dc.value),
     summary: {
       totalRows: rows.length,
+      totalStudents: rows.length,
+      totalApplications,
+      subjectApplicationCounts,
+      dateApplicationCounts,
       newRecords: newRecords.length,
       updateRecords: updateRecords.length,
       unchangedRecords: unchangedRecords.length,
       duplicateEnrollments: duplicateEnrollments.length,
       validationErrors: errors.length,
+      examType: exam?.type || 'REGULAR',
     },
     data: {
       newRecords,
@@ -624,6 +647,20 @@ async function commitExcelData(examId, parsedData, userId) {
           });
         }
       }
+
+      if (exam.type === 'IMPROVEMENT') {
+        await tx.eligibility.upsert({
+          where: { examId_enrollmentNumber: { examId, enrollmentNumber: row.enrollment } },
+          create: {
+            examId,
+            enrollmentNumber: row.enrollment,
+            studentProfileId: existingProfile?.id || null,
+            calculatedEligibility: 'ELIGIBLE',
+            finalEligibility: 'ELIGIBLE',
+          },
+          update: {},
+        });
+      }
       created++;
     }
 
@@ -692,11 +729,43 @@ async function commitExcelData(examId, parsedData, userId) {
           });
         }
       }
+
+      if (exam.type === 'IMPROVEMENT') {
+        const activeScheduleIds = row.subjects
+          .map(s => scheduleMap.get(`${s.dateStr}_${s.subjectCode}_${s.time}`))
+          .filter(Boolean);
+        await tx.studentExamSubject.deleteMany({
+          where: {
+            examStudentDataId: row.existingId,
+            examScheduleId: { notIn: activeScheduleIds },
+          },
+        });
+
+        const existingProfile = await tx.studentProfile.findUnique({
+          where: { enrollmentNumber: row.enrollment }
+        });
+        await tx.eligibility.upsert({
+          where: { examId_enrollmentNumber: { examId, enrollmentNumber: row.enrollment } },
+          create: {
+            examId,
+            enrollmentNumber: row.enrollment,
+            studentProfileId: existingProfile?.id || null,
+            calculatedEligibility: 'ELIGIBLE',
+            finalEligibility: 'ELIGIBLE',
+          },
+          update: {},
+        });
+      }
+
       updated++;
     }
 
     return { created, updated };
   });
+
+  if (exam.type === 'IMPROVEMENT') {
+    await syncRollNumbersToDatabase(examId);
+  }
 
   return result;
 }

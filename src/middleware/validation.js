@@ -63,6 +63,7 @@ const examSchema = z.object({
   name: z.string().min(1, 'Exam name is required').trim(),
   academicYearId: z.string().min(1, 'Academic year is required'),
   semesters: z.array(z.number().int().min(1).max(10)).min(1, 'Select at least one semester'),
+  type: z.enum(['REGULAR', 'IMPROVEMENT']).optional().default('REGULAR'),
 });
 
 // ──────────────────────────────────────────────

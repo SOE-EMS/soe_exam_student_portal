@@ -79,6 +79,7 @@ model Exam {
   id             String     @id @default(cuid())
   name           String                // e.g., "1st Internal Examination"
   academicYearId String
+  type           String     @default("REGULAR") // "REGULAR" | "IMPROVEMENT"
   isActive       Boolean    @default(true)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -189,6 +190,7 @@ model StudentExamSubject {
   id                String @id @default(cuid())
   examStudentDataId String
   examScheduleId    String
+  rollNumber        Int?
 
   // Relations
   examStudentData ExamStudentData @relation(fields: [examStudentDataId], references: [id], onDelete: Cascade)

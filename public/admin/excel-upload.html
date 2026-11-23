@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -188,6 +188,7 @@
           </div>
 
           <div id="errorContainer" class="alert alert-danger" style="display:none;"></div>
+          <div id="improvementBreakdown" style="display:none; margin-bottom:20px;"></div>
 
           <h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">Data Sample (First 5 Rows)</h4>
           <div class="table-container">
@@ -223,7 +224,7 @@
         const res = await fetch('/api/exams');
         const data = await res.json();
         const activeExams = (data.exams || []).filter(e => e.isActive);
-        const options = '<option value="">Select Exam...</option>' + activeExams.map(e => `<option value="${e.id}">${e.name} (${e.academicYear?.name || ''})</option>`).join('');
+        const options = '<option value="">Select Exam...</option>' + activeExams.map(e => `<option value="${e.id}">${e.name}${e.type === 'IMPROVEMENT' ? ' [Improvement Exam]' : ''} (${e.academicYear?.name || ''})</option>`).join('');
         document.getElementById('templateExamId').innerHTML = options;
         document.getElementById('uploadExamId').innerHTML = options;
       } catch (e) {
@@ -307,7 +308,22 @@
         
         document.getElementById('statNew').textContent = data.summary.newRecords;
         document.getElementById('statUpdate').textContent = data.summary.updatedRecords;
-        document.getElementById('statSubjects').textContent = data.summary.totalSubjects;
+        document.getElementById('statSubjects').textContent = data.summary.totalApplications || data.summary.totalSubjects || 0;
+
+        const impDiv = document.getElementById('improvementBreakdown');
+        if (data.summary.subjectApplicationCounts && Object.keys(data.summary.subjectApplicationCounts).length > 0) {
+          const subCounts = Object.entries(data.summary.subjectApplicationCounts).map(([code, count]) => `<span class="badge bg-light text-dark border me-2 mb-2 p-2"><strong>${code}:</strong> ${count}</span>`).join(' ');
+          const dateCounts = Object.entries(data.summary.dateApplicationCounts || {}).map(([d, count]) => `<span class="badge bg-light text-dark border me-2 mb-2 p-2"><strong>${d}:</strong> ${count}</span>`).join(' ');
+          impDiv.style.display = 'block';
+          impDiv.innerHTML = `
+            <div class="p-3 bg-light rounded border">
+              <div class="fw-bold mb-2 text-primary" style="font-size:13px"><i class="fas fa-layer-group me-1"></i> Improvement Exam Applications Breakdown (${data.summary.totalApplications || 0} Total Applications)</div>
+              <div class="mb-2" style="font-size:12px"><strong>Subject-wise:</strong> <div class="mt-1">${subCounts}</div></div>
+              <div style="font-size:12px"><strong>Date-wise:</strong> <div class="mt-1">${dateCounts}</div></div>
+            </div>`;
+        } else {
+          impDiv.style.display = 'none';
+        }
         
         const errContainer = document.getElementById('errorContainer');
         if (data.errors && data.errors.length > 0) {

@@ -108,18 +108,32 @@ async function generateBlockReportPDF(sections, examInfo) {
       };
 
       // Draw Table Header Helper
-      const drawTableHeader = (startY) => {
-        const colWidths = [30, 75, 130, 60, 70, 75, 60, 35.28];
-        const headers = [
-          'Sr\nNo', 
-          'Enrollment\nNo.', 
-          'Student Name', 
-          'Division', 
-          'Main Answer\nSheet No.', 
-          'Extra\nSupplementary\nCount', 
-          'Signature', 
-          'Marks'
-        ];
+      const drawTableHeader = (startY, isImprovement = false) => {
+        const colWidths = isImprovement
+          ? [24, 30, 72, 119.28, 55, 65, 75, 60, 35]
+          : [30, 75, 130, 60, 70, 75, 60, 35.28];
+        const headers = isImprovement
+          ? [
+              'Sr\nNo',
+              'Roll\nNo',
+              'Enrollment\nNo.',
+              'Student Name',
+              'Division\nName',
+              'Main Answer\nSheet No.',
+              'Extra\nSupplementary\nCount',
+              'Signature',
+              'Marks'
+            ]
+          : [
+              'Sr\nNo', 
+              'Enrollment\nNo.', 
+              'Student Name', 
+              'Division', 
+              'Main Answer\nSheet No.', 
+              'Extra\nSupplementary\nCount', 
+              'Signature', 
+              'Marks'
+            ];
 
         let colX = margin;
         const rowHeight = 35; 
@@ -139,29 +153,46 @@ async function generateBlockReportPDF(sections, examInfo) {
       sections.forEach((section, sIdx) => {
         if (sIdx > 0) doc.addPage();
         
-        let rowY = drawHeader(section, false);
-        rowY = drawTableHeader(rowY);
+        const isImprovement = Boolean(section.isImprovement || examInfo?.isImprovement);
+        const colWidths = isImprovement
+          ? [24, 30, 72, 119.28, 55, 65, 75, 60, 35]
+          : [30, 75, 130, 60, 70, 75, 60, 35.28];
 
-        const colWidths = [30, 75, 130, 60, 70, 75, 60, 35.28];
+        let rowY = drawHeader(section, false);
+        rowY = drawTableHeader(rowY, isImprovement);
+
         const rowHeight = 22; 
 
         section.students.forEach((student, idx) => {
           if (rowY + rowHeight > pageHeight - margin - 20) {
             doc.addPage();
             rowY = drawHeader(section, true);
+            rowY = drawTableHeader(rowY, isImprovement);
           }
 
           let colX = margin;
-          const rowData = [
-            String(idx + 1),
-            student.enrollmentNumber,
-            student.studentName,
-            student.division || '—',
-            '',
-            '',
-            '',
-            ''
-          ];
+          const rowData = isImprovement
+            ? [
+                String(idx + 1),
+                String(student.rollNo !== null && student.rollNo !== undefined ? student.rollNo : '—'),
+                student.enrollmentNumber,
+                student.studentName,
+                student.division || '—',
+                '',
+                '',
+                '',
+                ''
+              ]
+            : [
+                String(idx + 1),
+                student.enrollmentNumber,
+                student.studentName,
+                student.division || '—',
+                '',
+                '',
+                '',
+                ''
+              ];
 
           doc.lineWidth(0.5).strokeColor('#000000');
           doc.font('Cambria').fontSize(9);

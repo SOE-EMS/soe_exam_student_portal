@@ -3,6 +3,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
 const { generateBlockReportPDF } = require('../services/pdf/blockReport.pdf');
+const { getSubjectRollNumberMap } = require('../services/rollNumber.service');
 const { logAudit } = require('../services/audit.service');
 
 // ──────────────────────────────────────────────
@@ -60,6 +61,9 @@ router.post('/generate', requireAdmin, async (req, res) => {
     const globalEligibleEnrollments = new Set();
 
     for (const schedule of schedules) {
+      const isImprovement = exam.type === 'IMPROVEMENT';
+      const rollMap = isImprovement ? await getSubjectRollNumberMap(examId, schedule.subjectCode) : null;
+
       // Get students with this subject who are ELIGIBLE
       const studentSubjects = await prisma.studentExamSubject.findMany({
         where: { examScheduleId: schedule.id },
@@ -122,11 +126,13 @@ router.post('/generate', requireAdmin, async (req, res) => {
           division: group.students[0]?.division || '—',
           blockNumber: parseInt(blockNum),
           classroom: group.classroom,
+          isImprovement,
           students: group.students.map(s => ({
             enrollmentNumber: s.enrollmentNumber,
             studentName: s.studentName,
             division: s.division,
             feesStatus: s.feesStatus,
+            rollNo: rollMap ? (rollMap.get(s.enrollmentNumber) || null) : null,
           })),
         });
       });
@@ -205,6 +211,7 @@ router.post('/generate', requireAdmin, async (req, res) => {
     const pdfBuffer = await generateBlockReportPDF(sections, {
       examName: exam.name,
       academicYear: exam.academicYear.name,
+      isImprovement: exam.type === 'IMPROVEMENT',
     });
 
     await logAudit({

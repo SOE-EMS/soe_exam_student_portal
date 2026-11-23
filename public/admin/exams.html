@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -37,6 +37,7 @@
     .exam-stats .stat{display:flex;align-items:center;gap:4px}
     .badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
     .badge-active{background:#ecfdf5;color:#059669}.badge-inactive{background:#fef2f2;color:#dc2626}
+    .badge-regular{background:#eff6ff;color:#1d4ed8}.badge-improvement{background:#f3e8ff;color:#7e22ce}
     .sem-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
     .sem-badge{background:#eff6ff;color:var(--primary);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600}
     .btn-sm{padding:6px 12px;border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;border:1px solid var(--border);background:white;transition:all 0.2s}
@@ -103,6 +104,11 @@
 
       <div class="filter-bar">
         <select id="filterAY" onchange="loadExams()"><option value="">All Academic Years</option></select>
+        <select id="filterType" onchange="loadExams()">
+          <option value="">All Exam Types</option>
+          <option value="REGULAR">Regular Examination</option>
+          <option value="IMPROVEMENT">Improvement Examination</option>
+        </select>
         <button class="btn-primary-sm" onclick="openModal()"><i class="fas fa-plus"></i> Create Exam</button>
       </div>
 
@@ -119,6 +125,12 @@
       <form id="examForm">
         <input type="hidden" id="exam-id">
         <div class="mb-3"><label class="form-label">Exam Name</label><input type="text" class="form-control" id="exam-name" placeholder="e.g., 1st Internal Examination" required></div>
+        <div class="mb-3"><label class="form-label">Exam Type</label>
+          <select class="form-select" id="exam-type">
+            <option value="REGULAR">Regular Examination</option>
+            <option value="IMPROVEMENT">Improvement Examination</option>
+          </select>
+        </div>
         <div class="mb-3"><label class="form-label">Academic Year</label><select class="form-select" id="exam-ay" required></select></div>
         <div class="mb-3">
           <label class="form-label">Semesters</label>
@@ -157,7 +169,12 @@
 
     async function loadExams() {
       const ayId = document.getElementById('filterAY').value;
-      const url = ayId ? `/api/exams?academicYearId=${ayId}` : '/api/exams';
+      const type = document.getElementById('filterType').value;
+      let url = '/api/exams';
+      const params = [];
+      if (ayId) params.push(`academicYearId=${ayId}`);
+      if (type) params.push(`type=${type}`);
+      if (params.length) url += '?' + params.join('&');
       try {
         const res = await fetch(url);
         const data = await res.json();
@@ -173,8 +190,9 @@
               <div class="exam-ay">${exam.academicYear?.name || 'â€”'}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
+              <span class="badge ${exam.type==='IMPROVEMENT'?'badge-improvement':'badge-regular'}">${exam.type==='IMPROVEMENT'?'Improvement':'Regular'}</span>
               <span class="badge ${exam.isActive?'badge-active':'badge-inactive'}">${exam.isActive?'Active':'Inactive'}</span>
-              <button class="btn-sm edit" onclick="editExam('${exam.id}','${exam.name}','${exam.academicYearId}',[${(exam.semesters||[]).map(s=>s.semester)}])"><i class="fas fa-edit"></i></button>
+              <button class="btn-sm edit" onclick="editExam('${exam.id}','${exam.name}','${exam.academicYearId}',[${(exam.semesters||[]).map(s=>s.semester)}],'${exam.type||'REGULAR'}')"><i class="fas fa-edit"></i></button>
               <button class="btn-sm toggle" onclick="toggleExam('${exam.id}')"><i class="fas fa-power-off"></i></button>
               <button class="btn-sm delete" onclick="deleteExam('${exam.id}','${exam.name}')"><i class="fas fa-trash"></i></button>
             </div>
@@ -190,9 +208,10 @@
     }
     loadExams();
 
-    function openModal(id, name, ayId, sems) {
+    function openModal(id, name, ayId, sems, type) {
       document.getElementById('exam-id').value = id || '';
       document.getElementById('exam-name').value = name || '';
+      document.getElementById('exam-type').value = type || 'REGULAR';
       document.getElementById('exam-ay').value = ayId || '';
       [1,2,3,4,5,6,7,8,9,10].forEach(s => { document.getElementById('sem-'+s).checked = (sems||[]).includes(s); });
       document.getElementById('modal-title').textContent = id ? 'Edit Exam' : 'Create Exam';
@@ -200,7 +219,7 @@
       document.getElementById('modal').classList.add('show');
     }
     function closeModal() { document.getElementById('modal').classList.remove('show'); }
-    function editExam(id, name, ayId, sems) { openModal(id, name, ayId, sems); }
+    function editExam(id, name, ayId, sems, type) { openModal(id, name, ayId, sems, type); }
 
     document.getElementById('examForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -214,7 +233,7 @@
       submitBtn.textContent = 'Creating...';
       submitBtn.disabled = true;
 
-      const body = { name: document.getElementById('exam-name').value, academicYearId: document.getElementById('exam-ay').value, semesters };
+      const body = { name: document.getElementById('exam-name').value, type: document.getElementById('exam-type').value, academicYearId: document.getElementById('exam-ay').value, semesters };
       try {
         const res = await fetch(id ? `/api/exams/${id}` : '/api/exams', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await res.json();
