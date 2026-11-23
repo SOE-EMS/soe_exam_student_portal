@@ -40,8 +40,8 @@ router.post('/criteria/:examId', requireAdmin, validate(eligibilityCriteriaSchem
 
     res.json({ message: 'Eligibility criteria saved.', criteria });
   } catch (error) {
-    console.error('[Eligibility] Criteria error:', error.message);
-    res.status(500).json({ error: 'Failed to save criteria.' });
+    console.error('[Eligibility] Criteria error:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Failed to save criteria.' });
   }
 });
 

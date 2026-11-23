@@ -185,7 +185,9 @@ function extractCellString(cell) {
   const val = cell.value;
 
   if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
-    return sanitizeCellString(String(val).trim()) || null;
+    const s = String(val).trim();
+    if (s === '[object Object]') return null;
+    return sanitizeCellString(s) || null;
   }
 
   if (val instanceof Date) {
@@ -193,31 +195,86 @@ function extractCellString(cell) {
   }
 
   if (typeof val === 'object') {
-    if (typeof val.text === 'string') {
+    // 1. Text property (string, object with text, or richText)
+    if (typeof val.text === 'string' && val.text.trim() !== '[object Object]') {
       return sanitizeCellString(val.text.trim()) || null;
     }
-    if (val.text && typeof val.text === 'object' && Array.isArray(val.text.richText)) {
-      return sanitizeCellString(val.text.richText.map(r => r.text || '').join('').trim()) || null;
+    if (val.text && typeof val.text === 'object') {
+      if (Array.isArray(val.text.richText)) {
+        return sanitizeCellString(val.text.richText.map(r => r.text || '').join('').trim()) || null;
+      }
+      if (typeof val.text.text === 'string') {
+        return sanitizeCellString(val.text.text.trim()) || null;
+      }
     }
+
+    // 2. Hyperlink property on val or cell
+    const hl = val.hyperlink || (cell && cell.hyperlink);
+    if (hl && typeof hl === 'string') {
+      const cleanHl = hl.replace(/^mailto:/i, '').trim();
+      if (cleanHl && cleanHl !== '[object Object]') {
+        return sanitizeCellString(cleanHl) || null;
+      }
+    }
+
+    // 3. Rich text array
     if (Array.isArray(val.richText)) {
       return sanitizeCellString(val.richText.map(r => r.text || '').join('').trim()) || null;
     }
+
+    // 4. Formula result
     if (val.result !== undefined && val.result !== null) {
       if (typeof val.result === 'object') {
         return extractCellString({ value: val.result });
       }
-      return sanitizeCellString(String(val.result).trim()) || null;
+      const resStr = String(val.result).trim();
+      if (resStr && resStr !== '[object Object]') {
+        return sanitizeCellString(resStr) || null;
+      }
     }
-    if (val.hyperlink) {
-      return sanitizeCellString(String(val.hyperlink).replace(/^mailto:/i, '').trim()) || null;
+
+    // 5. Formula string fallback (e.g., HYPERLINK("mailto:email", "email"))
+    if (typeof val.formula === 'string') {
+      const quotedMatches = val.formula.match(/"([^"]+)"/g);
+      if (quotedMatches && quotedMatches.length > 0) {
+        // Find if any quoted token is an email or URL
+        for (const q of quotedMatches) {
+          const inner = q.replace(/^"|"$/g, '').replace(/^mailto:/i, '').trim();
+          if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(inner)) {
+            return sanitizeCellString(inner);
+          }
+        }
+        // Fallback to last quoted string (usually display text in =HYPERLINK(url, text))
+        const lastQuoted = quotedMatches[quotedMatches.length - 1].replace(/^"|"$/g, '').trim();
+        if (lastQuoted && lastQuoted !== '[object Object]') {
+          return sanitizeCellString(lastQuoted);
+        }
+      }
     }
+
+    // 6. Inspect values of the object for any valid string/email
+    for (const key of Object.keys(val)) {
+      const prop = val[key];
+      if (typeof prop === 'string' && prop.trim() && prop.trim() !== '[object Object]') {
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(prop.trim())) {
+          return sanitizeCellString(prop.trim());
+        }
+      }
+    }
+
+    // 7. Cell.text fallback
+    if (cell && typeof cell.text === 'string' && cell.text.trim() && cell.text.trim() !== '[object Object]') {
+      return sanitizeCellString(cell.text.trim()) || null;
+    }
+
+    return null;
   }
 
-  if (cell.text) {
-    return sanitizeCellString(String(cell.text).trim()) || null;
+  if (cell && typeof cell.text === 'string' && cell.text.trim() && cell.text.trim() !== '[object Object]') {
+    return sanitizeCellString(cell.text.trim()) || null;
   }
 
-  return sanitizeCellString(String(val).trim()) || null;
+  return null;
 }
 
 /**
