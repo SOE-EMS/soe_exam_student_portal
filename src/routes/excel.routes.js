@@ -121,6 +121,7 @@ router.post('/confirm/:examId', requireAdmin, async (req, res) => {
     res.json({
       message: 'Data uploaded successfully.',
       created: result.created,
+      inserted: result.created,
       updated: result.updated,
     });
   } catch (error) {
