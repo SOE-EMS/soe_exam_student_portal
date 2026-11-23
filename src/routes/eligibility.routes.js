@@ -97,64 +97,72 @@ router.post('/analyze/:examId', requireAdmin, validate(eligibilityAnalysisSchema
     for (const sem of semesters) {
       for (const prog of programs) {
         matrix[sem][prog] = { total: 0, eligible: 0, notEligible: 0 };
-
-        const students = await prisma.examStudentData.findMany({
-          where: { examId, semester: sem, program: prog },
-          select: {
-            enrollmentNumber: true,
-            studentName: true,
-            semester: true,
-            program: true,
-            attendancePercent: true,
-            feesStatus: true,
-          },
-          orderBy: { enrollmentNumber: 'asc' }
-        });
-
-        for (const s of students) {
-          const meetsAttendance = (s.attendancePercent || 0) >= minAttendancePercent;
-          const meetsFees = feesRequired === 'Any' || s.feesStatus === 'Paid';
-
-          let isEligible = true;
-          let reasons = [];
-          if (!meetsAttendance) {
-            isEligible = false;
-            reasons.push('Attendance below required percentage');
-          }
-          if (!meetsFees) {
-            isEligible = false;
-            reasons.push('Fees status is not Paid');
-          }
-
-          if (isEligible) {
-            matrix[sem][prog].eligible++;
-            semesterTotals[sem].eligible++;
-            programTotals[prog].eligible++;
-            grandEligible++;
-          } else {
-            matrix[sem][prog].notEligible++;
-            semesterTotals[sem].notEligible++;
-            programTotals[prog].notEligible++;
-            grandNotEligible++;
-          }
-
-          matrix[sem][prog].total++;
-          semesterTotals[sem].total++;
-          programTotals[prog].total++;
-          grandTotal++;
-
-          studentAnalysis.push({
-            enrollmentNumber: s.enrollmentNumber,
-            name: s.studentName,
-            semester: s.semester,
-            program: s.program,
-            attendance: s.attendancePercent || 0,
-            fees: s.feesStatus || 'Unknown',
-            result: isEligible ? 'Eligible' : 'Not Eligible',
-            reason: isEligible ? '' : reasons.join(' + ')
-          });
-        }
       }
+    }
+
+    const students = await prisma.examStudentData.findMany({
+      where: {
+        examId,
+        semester: { in: semesters },
+        program: { in: programs },
+      },
+      select: {
+        enrollmentNumber: true,
+        studentName: true,
+        semester: true,
+        program: true,
+        attendancePercent: true,
+        feesStatus: true,
+      },
+      orderBy: { enrollmentNumber: 'asc' }
+    });
+
+    for (const s of students) {
+      const sem = s.semester;
+      const prog = s.program;
+      if (!matrix[sem] || !matrix[sem][prog]) continue;
+
+      const meetsAttendance = (s.attendancePercent || 0) >= minAttendancePercent;
+      const meetsFees = feesRequired === 'Any' || s.feesStatus === 'Paid';
+
+      let isEligible = true;
+      let reasons = [];
+      if (!meetsAttendance) {
+        isEligible = false;
+        reasons.push('Attendance below required percentage');
+      }
+      if (!meetsFees) {
+        isEligible = false;
+        reasons.push('Fees status is not Paid');
+      }
+
+      if (isEligible) {
+        matrix[sem][prog].eligible++;
+        semesterTotals[sem].eligible++;
+        programTotals[prog].eligible++;
+        grandEligible++;
+      } else {
+        matrix[sem][prog].notEligible++;
+        semesterTotals[sem].notEligible++;
+        programTotals[prog].notEligible++;
+        grandNotEligible++;
+      }
+
+      matrix[sem][prog].total++;
+      semesterTotals[sem].total++;
+      programTotals[prog].total++;
+      grandTotal++;
+
+      studentAnalysis.push({
+        enrollmentNumber: s.enrollmentNumber,
+        name: s.studentName,
+        semester: s.semester,
+        program: s.program,
+        attendance: s.attendancePercent || 0,
+        fees: s.feesStatus || 'Unknown',
+        result: isEligible ? 'Eligible' : 'Not Eligible',
+        reason: isEligible ? '' : reasons.join(' + ')
+      });
     }
 
     res.json({
@@ -185,7 +193,7 @@ router.post('/apply/:examId', requireAdmin, validate(eligibilityAnalysisSchema),
 
     await prisma.$transaction(async (tx) => {
       // 1. Increment Eligibility Version and invalidate block reports
-      const exam = await tx.exam.update({
+      await tx.exam.update({
         where: { id: examId },
         data: { eligibilityVersion: { increment: 1 } },
       });
@@ -201,52 +209,75 @@ router.post('/apply/:examId', requireAdmin, validate(eligibilityAnalysisSchema),
         data: { isOutdated: true },
       });
 
-      // 2. Process students
-      for (const sem of semesters) {
-        for (const prog of programs) {
-          const students = await tx.examStudentData.findMany({
-            where: { examId, semester: sem, program: prog },
-            select: {
-              enrollmentNumber: true,
-              attendancePercent: true,
-              feesStatus: true,
+      // 2. Fetch all matching students in ONE single query
+      const students = await tx.examStudentData.findMany({
+        where: {
+          examId,
+          semester: { in: semesters },
+          program: { in: programs },
+        },
+        select: {
+          enrollmentNumber: true,
+          attendancePercent: true,
+          feesStatus: true,
+        },
+      });
+
+      if (students.length === 0) return;
+
+      const enrollments = students.map(s => s.enrollmentNumber);
+
+      // 3. Fetch existing profiles in ONE single query
+      const profiles = await tx.studentProfile.findMany({
+        where: { enrollmentNumber: { in: enrollments } },
+        select: { id: true, enrollmentNumber: true },
+      });
+      const profileMap = new Map(profiles.map(p => [p.enrollmentNumber, p.id]));
+
+      // 4. Fetch existing eligibility records in ONE single query
+      const existingEligibilities = await tx.eligibility.findMany({
+        where: { examId, enrollmentNumber: { in: enrollments } },
+      });
+      const existingMap = new Map(existingEligibilities.map(e => [e.enrollmentNumber, e]));
+
+      // 5. Prepare upsert operations
+      const operations = [];
+      for (const student of students) {
+        const meetsAttendance = (student.attendancePercent || 0) >= minAttendancePercent;
+        const meetsFees = feesRequired === 'Any' || student.feesStatus === 'Paid';
+        const calculatedStatus = meetsAttendance && meetsFees ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
+
+        const existing = existingMap.get(student.enrollmentNumber);
+        const finalEligibility = existing?.adminOverride || calculatedStatus;
+        const profileId = profileMap.get(student.enrollmentNumber) || null;
+
+        operations.push(
+          tx.eligibility.upsert({
+            where: { examId_enrollmentNumber: { examId, enrollmentNumber: student.enrollmentNumber } },
+            create: {
+              examId,
+              enrollmentNumber: student.enrollmentNumber,
+              studentProfileId: profileId,
+              calculatedEligibility: calculatedStatus,
+              finalEligibility,
             },
-          });
-
-          for (const student of students) {
-            const meetsAttendance = (student.attendancePercent || 0) >= minAttendancePercent;
-            const meetsFees = feesRequired === 'Any' || student.feesStatus === 'Paid';
-            const calculatedStatus = meetsAttendance && meetsFees ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
-
-            const profile = await tx.studentProfile.findUnique({
-              where: { enrollmentNumber: student.enrollmentNumber },
-              select: { id: true },
-            });
-
-            const existing = await tx.eligibility.findUnique({
-              where: { examId_enrollmentNumber: { examId, enrollmentNumber: student.enrollmentNumber } },
-            });
-
-            const finalEligibility = existing?.adminOverride || calculatedStatus;
-
-            await tx.eligibility.upsert({
-              where: { examId_enrollmentNumber: { examId, enrollmentNumber: student.enrollmentNumber } },
-              create: {
-                examId,
-                enrollmentNumber: student.enrollmentNumber,
-                studentProfileId: profile?.id || null,
-                calculatedEligibility: calculatedStatus,
-                finalEligibility,
-              },
-              update: {
-                calculatedEligibility: calculatedStatus,
-                finalEligibility: existing?.adminOverride || calculatedStatus,
-              },
-            });
-            updated++;
-          }
-        }
+            update: {
+              calculatedEligibility: calculatedStatus,
+              finalEligibility,
+              ...(profileId ? { studentProfileId: profileId } : {}),
+            },
+          })
+        );
       }
+
+      // Execute in concurrent chunks of 50
+      for (let i = 0; i < operations.length; i += 50) {
+        await Promise.all(operations.slice(i, i + 50));
+      }
+      updated = operations.length;
+    }, {
+      maxWait: 15000,
+      timeout: 60000,
     });
 
     // Invalidate cached tickets for this exam
@@ -267,7 +298,7 @@ router.post('/apply/:examId', requireAdmin, validate(eligibilityAnalysisSchema),
     });
   } catch (error) {
     console.error('[Eligibility] Apply error:', error.message);
-    res.status(500).json({ error: 'Failed to apply eligibility.' });
+    res.status(500).json({ error: error.message ? `Failed to apply eligibility: ${error.message}` : 'Failed to apply eligibility.' });
   }
 });
 
