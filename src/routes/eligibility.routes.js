@@ -226,55 +226,74 @@ router.post('/apply/:examId', requireAdmin, validate(eligibilityAnalysisSchema),
       if (students.length === 0) return;
 
       const enrollments = students.map(s => s.enrollmentNumber);
+      const eligibleEnrollments = [];
+      const notEligibleEnrollments = [];
 
-      // 3. Fetch existing profiles in ONE single query
-      const profiles = await tx.studentProfile.findMany({
-        where: { enrollmentNumber: { in: enrollments } },
-        select: { id: true, enrollmentNumber: true },
-      });
-      const profileMap = new Map(profiles.map(p => [p.enrollmentNumber, p.id]));
-
-      // 4. Fetch existing eligibility records in ONE single query
-      const existingEligibilities = await tx.eligibility.findMany({
-        where: { examId, enrollmentNumber: { in: enrollments } },
-      });
-      const existingMap = new Map(existingEligibilities.map(e => [e.enrollmentNumber, e]));
-
-      // 5. Prepare upsert operations
-      const operations = [];
       for (const student of students) {
         const meetsAttendance = (student.attendancePercent || 0) >= minAttendancePercent;
         const meetsFees = feesRequired === 'Any' || student.feesStatus === 'Paid';
-        const calculatedStatus = meetsAttendance && meetsFees ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
+        if (meetsAttendance && meetsFees) {
+          eligibleEnrollments.push(student.enrollmentNumber);
+        } else {
+          notEligibleEnrollments.push(student.enrollmentNumber);
+        }
+      }
 
-        const existing = existingMap.get(student.enrollmentNumber);
-        const finalEligibility = existing?.adminOverride || calculatedStatus;
-        const profileId = profileMap.get(student.enrollmentNumber) || null;
+      // 3. Find any students missing eligibility records
+      const existingList = await tx.eligibility.findMany({
+        where: { examId, enrollmentNumber: { in: enrollments } },
+        select: { enrollmentNumber: true },
+      });
+      const existingSet = new Set(existingList.map(e => e.enrollmentNumber));
+      const newEnrollments = enrollments.filter(e => !existingSet.has(e));
 
-        operations.push(
-          tx.eligibility.upsert({
-            where: { examId_enrollmentNumber: { examId, enrollmentNumber: student.enrollmentNumber } },
-            create: {
+      if (newEnrollments.length > 0) {
+        await tx.eligibility.createMany({
+          data: newEnrollments.map(enr => {
+            const isEligible = eligibleEnrollments.includes(enr);
+            const status = isEligible ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
+            return {
               examId,
-              enrollmentNumber: student.enrollmentNumber,
-              studentProfileId: profileId,
-              calculatedEligibility: calculatedStatus,
-              finalEligibility,
-            },
-            update: {
-              calculatedEligibility: calculatedStatus,
-              finalEligibility,
-              ...(profileId ? { studentProfileId: profileId } : {}),
-            },
-          })
-        );
+              enrollmentNumber: enr,
+              calculatedEligibility: status,
+              finalEligibility: status,
+            };
+          }),
+          skipDuplicates: true,
+        });
       }
 
-      // Execute in concurrent chunks of 50
-      for (let i = 0; i < operations.length; i += 50) {
-        await Promise.all(operations.slice(i, i + 50));
+      // 4. Bulk update eligible students in chunks of 500
+      if (eligibleEnrollments.length > 0) {
+        for (let i = 0; i < eligibleEnrollments.length; i += 500) {
+          const chunk = eligibleEnrollments.slice(i, i + 500);
+          await tx.eligibility.updateMany({
+            where: { examId, enrollmentNumber: { in: chunk }, adminOverride: null },
+            data: { calculatedEligibility: 'ELIGIBLE', finalEligibility: 'ELIGIBLE' },
+          });
+          await tx.eligibility.updateMany({
+            where: { examId, enrollmentNumber: { in: chunk }, NOT: { adminOverride: null } },
+            data: { calculatedEligibility: 'ELIGIBLE' },
+          });
+        }
       }
-      updated = operations.length;
+
+      // 5. Bulk update not-eligible students in chunks of 500
+      if (notEligibleEnrollments.length > 0) {
+        for (let i = 0; i < notEligibleEnrollments.length; i += 500) {
+          const chunk = notEligibleEnrollments.slice(i, i + 500);
+          await tx.eligibility.updateMany({
+            where: { examId, enrollmentNumber: { in: chunk }, adminOverride: null },
+            data: { calculatedEligibility: 'NOT_ELIGIBLE', finalEligibility: 'NOT_ELIGIBLE' },
+          });
+          await tx.eligibility.updateMany({
+            where: { examId, enrollmentNumber: { in: chunk }, NOT: { adminOverride: null } },
+            data: { calculatedEligibility: 'NOT_ELIGIBLE' },
+          });
+        }
+      }
+
+      updated = students.length;
     }, {
       maxWait: 15000,
       timeout: 60000,
