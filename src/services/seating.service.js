@@ -222,6 +222,28 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
     return { valid: false, errors: [{ row: 0, message: 'Invalid seating arrangement template. Missing Classroom No. or Branch column.' }] };
   }
 
+  // Pre-load subject roll mappings for Improvement Exam
+  const subjectRollToEnr = new Map();
+  const subjectEnrToRoll = new Map();
+
+  if (isImprovement) {
+    const schedules = await prisma.examSchedule.findMany({
+      where: { examId },
+      select: { subjectCode: true },
+    });
+    for (const s of schedules) {
+      if (!subjectRollToEnr.has(s.subjectCode)) {
+        const rollMap = await getSubjectRollNumberMap(examId, s.subjectCode);
+        const revMap = new Map();
+        for (const [enr, r] of rollMap.entries()) {
+          revMap.set(r, enr);
+        }
+        subjectRollToEnr.set(s.subjectCode, revMap);
+        subjectEnrToRoll.set(s.subjectCode, rollMap);
+      }
+    }
+  }
+
   const arrangements = [];
   const errors = [];
   let blockNumberCounter = 1;
@@ -231,20 +253,43 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
 
     const classroom = String(row.getCell(colMap.classroom).value || '').trim();
     const branch = String(row.getCell(colMap.branch).value || '').trim();
-    const fromEnrollment = String(row.getCell(colMap.from).value || '').trim();
-    const toEnrollment = String(row.getCell(colMap.to).value || '').trim();
+    const rawFrom = row.getCell(colMap.from).value;
+    const rawTo = row.getCell(colMap.to).value;
     const totalCount = parseInt(row.getCell(colMap.totalCount).value);
     const subjectCode = colMap.subjectCode ? String(row.getCell(colMap.subjectCode).value || '').trim() : '';
 
-    if (!classroom && !fromEnrollment && !toEnrollment) return;
+    if (!classroom && (rawFrom === null || rawFrom === undefined) && (rawTo === null || rawTo === undefined)) return;
 
     if (!classroom) errors.push({ row: rowNum, message: 'Missing Classroom No.' });
     if (!branch) errors.push({ row: rowNum, message: 'Missing Branch.' });
     if (isImprovement && hasSubjectCodeCol && !subjectCode) {
       errors.push({ row: rowNum, message: 'Missing Subject Code for Improvement Exam.' });
     }
-    if (!fromEnrollment || !toEnrollment) errors.push({ row: rowNum, message: 'Missing enrollment range (From/To).' });
+    if (rawFrom === null || rawFrom === undefined || rawTo === null || rawTo === undefined || String(rawFrom).trim() === '' || String(rawTo).trim() === '') {
+      errors.push({ row: rowNum, message: 'Missing enrollment/roll range (From/To).' });
+    }
     if (isNaN(totalCount) || totalCount <= 0) errors.push({ row: rowNum, message: 'Invalid Total Count.' });
+
+    const isNumericFrom = /^\d+$/.test(String(rawFrom !== null && rawFrom !== undefined ? rawFrom : '').trim());
+    const isNumericTo = /^\d+$/.test(String(rawTo !== null && rawTo !== undefined ? rawTo : '').trim());
+
+    let fromEnrollment = String(rawFrom !== null && rawFrom !== undefined ? rawFrom : '').trim();
+    let toEnrollment = String(rawTo !== null && rawTo !== undefined ? rawTo : '').trim();
+    let fromRoll = null;
+    let toRoll = null;
+
+    if (isNumericFrom && isNumericTo) {
+      fromRoll = parseInt(rawFrom);
+      toRoll = parseInt(rawTo);
+      if (fromRoll > toRoll) {
+        errors.push({ row: rowNum, message: `From Roll No. (${fromRoll}) cannot be greater than To Roll No. (${toRoll}).` });
+      }
+      if (subjectCode && subjectRollToEnr.has(subjectCode)) {
+        const revMap = subjectRollToEnr.get(subjectCode);
+        fromEnrollment = revMap.get(fromRoll) || fromEnrollment;
+        toEnrollment = revMap.get(toRoll) || toEnrollment;
+      }
+    }
 
     // Parse Block No.
     let blockNumber;
@@ -293,6 +338,8 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
       subjectCode,
       classroom,
       branch,
+      fromRoll,
+      toRoll,
       fromEnrollment,
       toEnrollment,
       totalCount: totalCount || 0,
@@ -307,12 +354,21 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
       const a = arrangements[i];
       const b = arrangements[j];
       const sameSubject = (a.subjectCode && b.subjectCode) ? (a.subjectCode === b.subjectCode) : true;
-      if (sameSubject && a.fromEnrollment && b.fromEnrollment && a.toEnrollment && b.toEnrollment) {
-        if (a.fromEnrollment <= b.toEnrollment && b.fromEnrollment <= a.toEnrollment) {
-          errors.push({
-            row: 0,
-            message: `Overlapping enrollment range${a.subjectCode ? ' for ' + a.subjectCode : ''}: Row ${a.rowNum} and Row ${b.rowNum} (${a.fromEnrollment}-${a.toEnrollment} vs ${b.fromEnrollment}-${b.toEnrollment})`,
-          });
+      if (sameSubject) {
+        if (a.fromRoll !== null && a.toRoll !== null && b.fromRoll !== null && b.toRoll !== null) {
+          if (a.fromRoll <= b.toRoll && b.fromRoll <= a.toRoll) {
+            errors.push({
+              row: 0,
+              message: `Overlapping roll number range${a.subjectCode ? ' for ' + a.subjectCode : ''}: Row ${a.rowNum} and Row ${b.rowNum} (${a.fromRoll}-${a.toRoll} vs ${b.fromRoll}-${b.toRoll})`,
+            });
+          }
+        } else if (a.fromEnrollment && b.fromEnrollment && a.toEnrollment && b.toEnrollment) {
+          if (a.fromEnrollment <= b.toEnrollment && b.fromEnrollment <= a.toEnrollment) {
+            errors.push({
+              row: 0,
+              message: `Overlapping enrollment range${a.subjectCode ? ' for ' + a.subjectCode : ''}: Row ${a.rowNum} and Row ${b.rowNum} (${a.fromEnrollment}-${a.toEnrollment} vs ${b.fromEnrollment}-${b.toEnrollment})`,
+            });
+          }
         }
       }
     }
@@ -320,8 +376,16 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
 
   // Calculate actual counts using DB
   for (const arr of arrangements) {
-    if (arr.fromEnrollment && arr.toEnrollment) {
-      let actualStudents = 0;
+    let actualStudents = 0;
+
+    if (arr.fromRoll !== null && arr.toRoll !== null && arr.subjectCode && subjectEnrToRoll.has(arr.subjectCode)) {
+      const enrToRoll = subjectEnrToRoll.get(arr.subjectCode);
+      for (const [enr, r] of enrToRoll.entries()) {
+        if (r >= arr.fromRoll && r <= arr.toRoll) {
+          actualStudents++;
+        }
+      }
+    } else if (arr.fromEnrollment && arr.toEnrollment) {
       if (arr.subjectCode) {
         actualStudents = await prisma.studentExamSubject.count({
           where: {
@@ -345,16 +409,16 @@ async function parseAndValidateSeatingExcel(buffer, examId) {
           },
         });
       }
+    }
 
-      arr.actualCount = actualStudents;
+    arr.actualCount = actualStudents;
 
-      if (arr.actualCount !== arr.totalCount) {
-        arr.status = 'Warning';
-        errors.push({
-          row: arr.rowNum,
-          message: `Classroom ${arr.classroom}${arr.subjectCode ? ' (' + arr.subjectCode + ')' : ''}: Expected ${arr.totalCount} students, but found ${arr.actualCount} in database.`
-        });
-      }
+    if (arr.actualCount !== arr.totalCount) {
+      arr.status = 'Warning';
+      errors.push({
+        row: arr.rowNum,
+        message: `Classroom ${arr.classroom}${arr.subjectCode ? ' (' + arr.subjectCode + ')' : ''}: Expected ${arr.totalCount} students, but found ${arr.actualCount} in database.`
+      });
     }
   }
 
@@ -408,7 +472,14 @@ async function commitSeatingData(examId, arrangements, userId) {
 
       // Find all students in this range
       let enrollments = [];
-      if (arr.subjectCode) {
+      if (arr.fromRoll !== null && arr.fromRoll !== undefined && arr.toRoll !== null && arr.toRoll !== undefined && arr.subjectCode) {
+        const rollMap = await getSubjectRollNumberMap(examId, arr.subjectCode);
+        for (const [enr, r] of rollMap.entries()) {
+          if (r >= arr.fromRoll && r <= arr.toRoll) {
+            enrollments.push(enr);
+          }
+        }
+      } else if (arr.subjectCode) {
         const studentSubjects = await tx.studentExamSubject.findMany({
           where: {
             examSchedule: { examId, subjectCode: arr.subjectCode },

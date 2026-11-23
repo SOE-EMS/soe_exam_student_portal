@@ -351,8 +351,8 @@
               <td>${row.classroom}</td>
               <td>${row.branch}</td>
               <td>${row.subjectCode ? `<span class="badge bg-light text-dark border">${row.subjectCode}</span>` : '—'}</td>
-              <td>${row.fromEnrollment}</td>
-              <td>${row.toEnrollment}</td>
+              <td>${(row.fromRoll !== null && row.fromRoll !== undefined) ? `${row.fromEnrollment} (Roll ${row.fromRoll})` : row.fromEnrollment}</td>
+              <td>${(row.toRoll !== null && row.toRoll !== undefined) ? `${row.toEnrollment} (Roll ${row.toRoll})` : row.toEnrollment}</td>
               <td>${row.totalCount}</td>
               <td>${row.actualCount}</td>
               <td>${row.blockNumber}</td>
