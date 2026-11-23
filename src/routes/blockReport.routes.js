@@ -36,19 +36,29 @@ router.post('/generate', requireAdmin, async (req, res) => {
       }
     };
     
-    if (time) {
-      scheduleWhere.examTime = String(time)
+    let schedules = await prisma.examSchedule.findMany({
+      where: scheduleWhere,
+      orderBy: { subjectCode: 'asc' },
+    });
+
+    if (time && time.trim() && schedules.length > 0) {
+      const normalizedTime = String(time)
         .toUpperCase()
         .replace(/([0-9])([AP]M)/g, '$1 $2') // Add space before AM/PM
         .replace(/\s+/g, ' ') // Collapse spaces
         .replace(/\s*-\s*/g, ' TO ') // Replace hyphen with TO
         .trim();
-    }
 
-    const schedules = await prisma.examSchedule.findMany({
-      where: scheduleWhere,
-      orderBy: { subjectCode: 'asc' },
-    });
+      const timeMatched = schedules.filter(s => {
+        if (!s.examTime || !s.examTime.trim()) return false;
+        const sTime = s.examTime.toUpperCase().replace(/\s+/g, ' ').trim();
+        return sTime === normalizedTime;
+      });
+
+      if (timeMatched.length > 0) {
+        schedules = timeMatched;
+      }
+    }
 
     if (schedules.length === 0) {
       return res.status(404).json({ error: 'No examination subjects are scheduled for the selected examination, date and time.' });
@@ -265,10 +275,28 @@ router.get('/dates/:examId', requireAdmin, async (req, res) => {
       select: { examDate: true, examTime: true },
     });
 
-    const dates = [...new Set(schedules.map(s => formatDate(s.examDate)))].sort();
-    const times = [...new Set(schedules.map(s => s.examTime).filter(Boolean))].sort();
+    const dateTimesMap = {};
+    const datesSet = new Set();
+    const allTimesSet = new Set();
 
-    res.json({ dates, times });
+    schedules.forEach(s => {
+      const d = formatDate(s.examDate);
+      datesSet.add(d);
+      if (!dateTimesMap[d]) dateTimesMap[d] = new Set();
+      if (s.examTime && s.examTime.trim()) {
+        dateTimesMap[d].add(s.examTime.trim());
+        allTimesSet.add(s.examTime.trim());
+      }
+    });
+
+    const dates = Array.from(datesSet).sort();
+    const times = Array.from(allTimesSet).sort();
+    const dateTimes = {};
+    for (const d of dates) {
+      dateTimes[d] = Array.from(dateTimesMap[d] || []);
+    }
+
+    res.json({ dates, times, dateTimes });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load dates.' });
   }

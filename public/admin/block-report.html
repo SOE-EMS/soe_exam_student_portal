@@ -136,6 +136,7 @@
     function showAlert(msg, type = 'danger') { document.getElementById('alert-container').innerHTML = `<div class="alert alert-${type}">${msg}</div>`; window.scrollTo(0,0); setTimeout(() => document.getElementById('alert-container').innerHTML = '', 5000); }
 
     let allTimes = [];
+    let dateTimes = {};
 
     async function loadExams() {
       try {
@@ -172,13 +173,16 @@
         const data = await res.json();
         dateSelect.innerHTML = '<option value="">Select Date...</option>' + (data.dates||[]).map(d => `<option value="${d}">${d}</option>`).join('');
         allTimes = data.times || [];
+        dateTimes = data.dateTimes || {};
         populateTimes();
       } catch (e) { console.error(e); }
     }
 
     function populateTimes() {
+      const selectedDate = document.getElementById('dateSelect').value;
       const timeSelect = document.getElementById('timeSelect');
-      timeSelect.innerHTML = '<option value="">All Times</option>' + allTimes.map(t => `<option value="${t}">${t}</option>`).join('');
+      const timesForDate = (selectedDate && dateTimes[selectedDate]) ? dateTimes[selectedDate] : allTimes;
+      timeSelect.innerHTML = '<option value="">All Times</option>' + timesForDate.map(t => `<option value="${t}">${t}</option>`).join('');
     }
 
     document.getElementById('reportForm').addEventListener('submit', async (e) => {
