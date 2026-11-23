@@ -12,10 +12,15 @@ const { generateSeatingSampleExcel, parseAndValidateSeatingExcel, commitSeatingD
 
 router.get('/sample', requireAdmin, async (req, res) => {
   try {
-    const workbook = await generateSeatingSampleExcel();
+    const type = req.query.type === 'IMPROVEMENT' ? 'IMPROVEMENT' : 'REGULAR';
+    const workbook = await generateSeatingSampleExcel(type);
+
+    const filename = type === 'IMPROVEMENT'
+      ? 'Seating_Arrangement_Sample_Improvement.xlsx'
+      : 'Seating_Arrangement_Sample.xlsx';
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Seating_Arrangement_Sample.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
     await workbook.xlsx.write(res);
     res.end();
@@ -132,13 +137,13 @@ router.get('/export/:examId', requireAdmin, async (req, res) => {
     const workbook = await generateSeatingExportExcel(req.params.examId);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Seating_Arrangement_Export.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=Seating_Arrangement_Export_${req.params.examId}.xlsx`);
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
     console.error('[Seating] Export error:', error.message);
-    res.status(500).json({ error: error.message || 'Failed to export seating arrangement.' });
+    res.status(400).json({ error: error.message || 'Failed to export seating arrangement.' });
   }
 });
 

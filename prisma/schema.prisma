@@ -210,6 +210,8 @@ model SeatingArrangement {
   examId              String
   blockNumber         Int
   subjectBlock        Int      @default(0)
+  subjectBlockStr     String?
+  subjectCode         String?
   classroom           String
   fromEnrollment      String
   toEnrollment        String
@@ -222,6 +224,7 @@ model SeatingArrangement {
 
   @@unique([examId, blockNumber])
   @@index([examId])
+  @@index([subjectCode])
 }
 
 model BlockAssignment {

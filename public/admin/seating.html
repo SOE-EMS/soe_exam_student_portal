@@ -134,10 +134,11 @@
           <div class="template-box mb-4">
             <div class="template-info">
               <h4>Download Sample Seating Arrangement</h4>
-              <p>Contains correct header structure and examples.</p>
+              <p>Download sample template format for Regular Exam or Improvement Exam.</p>
             </div>
-            <div>
-              <button class="btn-outline" onclick="downloadSample()"><i class="fas fa-download"></i> Download Sample Excel</button>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn-outline" onclick="downloadSample('REGULAR')"><i class="fas fa-download"></i> Regular Exam Sample</button>
+              <button class="btn-outline" style="border-color:var(--primary);color:var(--primary);font-weight:600;" onclick="downloadSample('IMPROVEMENT')"><i class="fas fa-download"></i> Improvement Exam Sample</button>
             </div>
           </div>
 
@@ -190,6 +191,7 @@
                 <tr>
                   <th>Classroom</th>
                   <th>Branch</th>
+                  <th>Subject Code</th>
                   <th>From</th>
                   <th>To</th>
                   <th>Expected Count</th>
@@ -224,7 +226,7 @@
         <div class="card-body-custom" style="padding:0">
           <div class="table-container" style="border:none;border-radius:0;margin-bottom:0;">
             <table class="table-custom">
-              <thead><tr><th>Block No.</th><th>Subject Block</th><th>Classroom</th><th>Range (From - To)</th><th>Capacity</th><th>Actual Assigned</th></tr></thead>
+              <thead><tr><th>Block No.</th><th>Subject Block</th><th>Subject Code</th><th>Classroom</th><th>Range (From - To)</th><th>Capacity</th><th>Actual Assigned</th></tr></thead>
               <tbody id="seatingTable">
                 <tr><td colspan="6" class="empty-state"><i class="fas fa-arrow-left"></i><div>Select an exam to view seating.</div></td></tr>
               </tbody>
@@ -254,8 +256,13 @@
     }
     loadExams();
 
-    function downloadSample() {
-      window.location.href = `/api/seating/sample`;
+    function downloadSample(type) {
+      if (!type) {
+        const select = document.getElementById('examSelect');
+        const selectedText = select.options[select.selectedIndex]?.text || '';
+        type = selectedText.toLowerCase().includes('improvement') ? 'IMPROVEMENT' : 'REGULAR';
+      }
+      window.location.href = `/api/seating/sample?type=${type}`;
     }
 
     // Drag and Drop
@@ -343,12 +350,13 @@
             return `<tr>
               <td>${row.classroom}</td>
               <td>${row.branch}</td>
+              <td>${row.subjectCode ? `<span class="badge bg-light text-dark border">${row.subjectCode}</span>` : '—'}</td>
               <td>${row.fromEnrollment}</td>
               <td>${row.toEnrollment}</td>
               <td>${row.totalCount}</td>
               <td>${row.actualCount}</td>
               <td>${row.blockNumber}</td>
-              <td>${row.subjectBlock}</td>
+              <td>${row.subjectBlockStr || row.subjectBlock}</td>
               <td><span class="status-badge ${statClass}">${row.status}</span></td>
             </tr>`;
           }).join('');
@@ -415,7 +423,8 @@
         if (data.arrangements && data.arrangements.length > 0) {
           tbody.innerHTML = data.arrangements.map(a => `<tr>
             <td><strong>${a.blockNumber}</strong></td>
-            <td>${a.subjectBlock}</td>
+            <td>${a.subjectBlockStr || a.subjectBlock}</td>
+            <td>${a.subjectCode ? `<span class="badge bg-light text-dark border">${a.subjectCode}</span>` : '—'}</td>
             <td>${a.classroom}</td>
             <td>${a.fromEnrollment} - ${a.toEnrollment}</td>
             <td>${a.blockCount}</td>
@@ -441,10 +450,43 @@
       } catch { showAlert('Network error.'); }
     }
 
-    function exportSeating() {
+    async function exportSeating() {
       const examId = document.getElementById('examSelect').value;
       if (!examId) return showAlert('Please select an exam.');
-      window.location.href = `/api/seating/export/${examId}`;
+
+      const exportBtn = document.querySelector('button[onclick="exportSeating()"]');
+      const origHtml = exportBtn ? exportBtn.innerHTML : '';
+      if (exportBtn) {
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+      }
+
+      try {
+        const res = await fetch(`/api/seating/export/${examId}`);
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({ error: 'Export failed.' }));
+          showAlert(d.error || 'Failed to export seating arrangement.', 'danger');
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const examName = document.getElementById('examSelect').options[document.getElementById('examSelect').selectedIndex]?.text?.split('(')[0]?.trim() || 'Exam';
+        a.download = `Seating_Arrangement_${examName.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        showAlert('Network error during export: ' + err.message, 'danger');
+      } finally {
+        if (exportBtn) {
+          exportBtn.disabled = false;
+          exportBtn.innerHTML = origHtml;
+        }
+      }
     }
 
     async function logout() { try { await fetch('/api/auth/logout',{method:'POST'}); } catch {} window.location.href='/admin/login'; }
