@@ -245,6 +245,7 @@
     function showAlert(msg, type = 'danger') { document.getElementById('alert-container').innerHTML = `<div class="alert alert-${type}">${msg}</div>`; window.scrollTo(0,0); setTimeout(() => document.getElementById('alert-container').innerHTML = '', 5000); }
 
     let selectedFile = null;
+    let parsedSeatingData = null;
 
     async function loadExams() {
       try {
@@ -319,6 +320,7 @@
           }
         }
 
+        parsedSeatingData = data.allData || null;
         document.getElementById('uploadSection').style.display = 'none';
         document.getElementById('viewSection').style.display = 'none';
         document.getElementById('previewSection').style.display = 'block';
@@ -370,6 +372,7 @@
     }
 
     async function cancelPreview() {
+      parsedSeatingData = null;
       try { await fetch('/api/seating/cancel', { method: 'POST' }); } catch {}
       document.getElementById('previewSection').style.display = 'none';
       document.getElementById('uploadSection').style.display = 'block';
@@ -385,13 +388,18 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
       try {
-        const res = await fetch(`/api/seating/confirm/${examId}`, { method: 'POST' });
+        const res = await fetch(`/api/seating/confirm/${examId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: parsedSeatingData })
+        });
         const data = await res.json();
         
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save"></i> Confirm Upload';
 
         if (res.ok) {
+          parsedSeatingData = null;
           showAlert(`Success! Saved ${data.blocks} blocks of seating arrangement.`, 'success');
           cancelPreview();
           removeFile(new Event('click'));

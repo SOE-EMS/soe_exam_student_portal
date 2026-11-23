@@ -62,13 +62,14 @@ router.post(
         summary: result.summary,
         timestamp: Date.now(),
       };
-      req.session.save();
+      await new Promise((resolve) => req.session.save(resolve));
 
       res.json({
         message: 'Excel parsed successfully. Review and confirm upload.',
         summary: result.summary,
         errors: result.errors,
         sampleData: result.data.slice(0, 5), // Send first 5 rows for preview table
+        allData: result.data,
         sessionId: req.sessionID
       });
     } catch (error) {
@@ -85,21 +86,30 @@ router.post(
 router.post('/confirm/:examId', requireAdmin, async (req, res) => {
   try {
     const { examId } = req.params;
-    const pending = req.session.pendingSeatingUpload;
+    let dataToCommit = null;
 
-    if (!pending || pending.examId !== examId) {
+    if (req.body && Array.isArray(req.body.data) && req.body.data.length > 0) {
+      dataToCommit = req.body.data;
+    } else {
+      const pending = req.session.pendingSeatingUpload;
+      if (pending && pending.examId === examId) {
+        if (Date.now() - pending.timestamp > 30 * 60 * 1000) {
+          delete req.session.pendingSeatingUpload;
+          await new Promise((resolve) => req.session.save(resolve));
+          return res.status(400).json({ error: 'Upload data expired. Please upload again.' });
+        }
+        dataToCommit = pending.data;
+      }
+    }
+
+    if (!dataToCommit || !Array.isArray(dataToCommit) || dataToCommit.length === 0) {
       return res.status(400).json({ error: 'No pending upload found. Please upload again.' });
     }
-    if (Date.now() - pending.timestamp > 30 * 60 * 1000) {
-      delete req.session.pendingSeatingUpload;
-      req.session.save();
-      return res.status(400).json({ error: 'Upload data expired. Please upload again.' });
-    }
 
-    const result = await commitSeatingData(examId, pending.data, req.session.userId);
+    const result = await commitSeatingData(examId, dataToCommit, req.session.userId);
 
     delete req.session.pendingSeatingUpload;
-    req.session.save();
+    await new Promise((resolve) => req.session.save(resolve));
 
     await logAudit({
       userId: req.session.userId,
