@@ -10,8 +10,29 @@ const adminLoginSchema = z.object({
 });
 
 const studentLoginSchema = z.object({
-  enrollmentNumber: z.string().min(1, 'Enrollment number is required').trim(),
+  email: z.string().min(1).trim().optional(),
+  enrollmentNumber: z.string().min(1).trim().optional(),
   password: z.string().min(1, 'Password is required'),
+}).refine(data => data.email || data.enrollmentNumber, {
+  message: 'College email or enrollment number is required',
+});
+
+const studentCheckEmailSchema = z.object({
+  email: z.string().email('Invalid college email address').trim(),
+});
+
+const studentVerifyOtpSchema = z.object({
+  email: z.string().email('Invalid college email address').trim(),
+  otp: z.string().min(4, 'OTP must be at least 4 digits').max(8).trim(),
+});
+
+const adminAddStudentSchema = z.object({
+  name: z.string().min(2, 'Full name is required (min 2 characters)').trim(),
+  email: z.string().email('Invalid college email address').trim(),
+  enrollmentNumber: z.string().trim().optional(),
+  program: z.string().trim().optional(),
+  semester: z.number().int().min(1).max(10).optional(),
+  division: z.string().trim().optional(),
 });
 
 const enrollmentVerifySchema = z.object({
@@ -104,6 +125,9 @@ function validate(schema) {
 module.exports = {
   adminLoginSchema,
   studentLoginSchema,
+  studentCheckEmailSchema,
+  studentVerifyOtpSchema,
+  adminAddStudentSchema,
   enrollmentVerifySchema,
   studentRegisterSchema,
   academicYearSchema,

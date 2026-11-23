@@ -9,6 +9,7 @@ const {
   eligibilityOverrideSchema,
 } = require('../middleware/validation');
 const { logAudit } = require('../services/audit.service');
+const { invalidateStudentCache, invalidateExamCache } = require('../services/pdfCache.service');
 
 // ──────────────────────────────────────────────
 // SET ELIGIBILITY CRITERIA
@@ -24,6 +25,9 @@ router.post('/criteria/:examId', requireAdmin, validate(eligibilityCriteriaSchem
       create: { examId, minAttendancePercent, feesRequired },
       update: { minAttendancePercent, feesRequired },
     });
+
+    // Invalidate cached PDFs for this exam
+    invalidateExamCache(examId);
 
     await logAudit({
       userId: req.session.userId,
@@ -245,6 +249,9 @@ router.post('/apply/:examId', requireAdmin, validate(eligibilityAnalysisSchema),
       }
     });
 
+    // Invalidate cached tickets for this exam
+    invalidateExamCache(examId);
+
     await logAudit({
       userId: req.session.userId,
       action: 'ELIGIBILITY_APPLIED',
@@ -310,6 +317,9 @@ router.put('/override/:examId/:enrollmentNumber', requireAdmin, validate(eligibi
       });
     });
 
+    // Invalidate cached ticket for this student
+    invalidateStudentCache(examId, enrollmentNumber);
+
     await logAudit({
       userId: req.session.userId,
       action: 'ELIGIBILITY_OVERRIDE',
@@ -368,6 +378,9 @@ router.delete('/override/:examId/:enrollmentNumber', requireAdmin, async (req, r
         },
       });
     });
+
+    // Invalidate cached ticket for this student
+    invalidateStudentCache(examId, enrollmentNumber);
 
     await logAudit({
       userId: req.session.userId,

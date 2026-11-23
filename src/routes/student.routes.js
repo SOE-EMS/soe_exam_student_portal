@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
 const { requireStudent } = require('../middleware/auth');
-const { photoUpload, handleMulterError } = require('../middleware/fileUpload');
+const { photoUpload, handleMulterError, validateImageMagicBytes } = require('../middleware/fileUpload');
 const { uploadImage, deleteImage } = require('../config/cloudinary');
+const { logAudit } = require('../services/audit.service');
+const { invalidateStudentCache } = require('../services/pdfCache.service');
 const { buildHallTicket } = require('./hallTicket.routes');
 
 // ──────────────────────────────────────────────
@@ -135,6 +137,10 @@ router.post(
     try {
       if (!req.file) return res.status(400).json({ error: 'No photo uploaded.' });
 
+      if (!validateImageMagicBytes(req.file.buffer)) {
+        return res.status(400).json({ error: 'Invalid image signature. Only authentic JPEG and PNG files are accepted.' });
+      }
+
       const profile = await prisma.studentProfile.findFirst({
         where: { userId: req.session.userId },
       });
@@ -160,6 +166,24 @@ router.post(
           photoUrl: result.secure_url,
           photoPublicId: result.public_id,
         },
+      });
+
+      // Invalidate any cached hall tickets for this student
+      try {
+        const studentExams = await prisma.eligibility.findMany({
+          where: { enrollmentNumber: profile.enrollmentNumber },
+          select: { examId: true },
+        });
+        studentExams.forEach(e => invalidateStudentCache(e.examId, profile.enrollmentNumber));
+      } catch (_) {}
+
+      await logAudit({
+        userId: req.session.userId,
+        action: 'STUDENT_PHOTO_UPDATED',
+        entity: 'StudentProfile',
+        entityId: profile.id,
+        details: { enrollmentNumber: profile.enrollmentNumber },
+        ipAddress: req.ip,
       });
 
       res.json({

@@ -10,8 +10,14 @@ async function seedAdmin() {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminEmail || !adminPassword) {
-    console.log('[Seed] ADMIN_EMAIL or ADMIN_PASSWORD not set — skipping admin seed.');
+    console.log('[Seed] ADMIN_EMAIL or ADMIN_PASSWORD not configured in environment — skipping admin seed.');
     return;
+  }
+
+  // Security check: Flag weak or default credentials
+  const weakPasswords = ['admin', 'admin123', 'admin1234', 'admin@123', 'password', '12345678'];
+  if (weakPasswords.includes(adminPassword.toLowerCase())) {
+    console.warn('[Security Warning] ADMIN_PASSWORD is set to a common default. Please update ADMIN_PASSWORD in your .env file with a strong secret.');
   }
 
   try {
@@ -20,7 +26,7 @@ async function seedAdmin() {
     });
 
     if (existingAdmin) {
-      console.log(`[Seed] Admin account already exists: ${adminEmail}`);
+      console.log(`[Seed] Admin account verified: ${adminEmail}`);
       return;
     }
 
@@ -32,10 +38,11 @@ async function seedAdmin() {
         password: hashedPassword,
         role: 'ADMIN',
         isActive: true,
+        isActivated: true,
       },
     });
 
-    console.log(`[Seed] Admin account created: ${adminEmail}`);
+    console.log(`[Seed] Admin account initialized securely: ${adminEmail}`);
   } catch (error) {
     console.error('[Seed] Failed to seed admin account:', error.message);
   }

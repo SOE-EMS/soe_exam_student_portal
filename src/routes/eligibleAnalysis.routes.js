@@ -4,22 +4,36 @@ const prisma = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
+const { sanitizeCellString } = require('../services/excel.service');
 
-// Helper to construct WHERE clause and parameters for raw SQL
-function buildWhereClause(query) {
-  let where = 'WHERE esd."examId" = ?';
+function sanitizeExcelRow(row) {
+  const sanitized = {};
+  for (const [key, val] of Object.entries(row)) {
+    if (typeof val === 'string') {
+      sanitized[key] = sanitizeCellString(val);
+    } else {
+      sanitized[key] = val;
+    }
+  }
+  return sanitized;
+}
+
+// Helper to construct WHERE clause and parameters for raw SQL in PostgreSQL
+function buildWhereClause(query, startParamIndex = 1) {
+  let paramIndex = startParamIndex;
+  let where = `WHERE esd."examId" = $${paramIndex++}`;
   const params = [query.examId];
 
   if (query.semester) {
-    where += ' AND esd.semester = ?';
+    where += ` AND esd.semester = $${paramIndex++}`;
     params.push(parseInt(query.semester));
   }
   if (query.program) {
-    where += ' AND esd.program = ?';
+    where += ` AND esd.program = $${paramIndex++}`;
     params.push(query.program);
   }
   if (query.division) {
-    where += ' AND esd.division = ?';
+    where += ` AND esd.division = $${paramIndex++}`;
     params.push(query.division);
   }
   if (query.status) {
@@ -32,12 +46,12 @@ function buildWhereClause(query) {
 
   // Search
   if (query.search) {
-    where += ' AND (esd."enrollmentNumber" LIKE ? OR esd."studentName" LIKE ?)';
+    where += ` AND (esd."enrollmentNumber" ILIKE $${paramIndex++} OR esd."studentName" ILIKE $${paramIndex++})`;
     params.push(`%${query.search}%`);
     params.push(`%${query.search}%`);
   }
 
-  return { where, params };
+  return { where, params, nextParamIndex: paramIndex };
 }
 
 // ──────────────────────────────────────────────
@@ -53,8 +67,8 @@ router.get('/summary', requireAdmin, async (req, res) => {
     const sql = `
       SELECT 
         COUNT(esd.id) as total,
-        SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as eligible,
-        SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as notEligible
+        SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as "eligible",
+        SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as "notEligible"
       FROM "ExamStudentData" esd
       LEFT JOIN "Eligibility" e ON e."examId" = esd."examId" AND e."enrollmentNumber" = esd."enrollmentNumber"
       ${where}
@@ -62,9 +76,9 @@ router.get('/summary', requireAdmin, async (req, res) => {
 
     const result = await prisma.$queryRawUnsafe(sql, ...params);
     
-    let total = Number(result[0].total || 0);
-    let eligible = Number(result[0].eligible || 0);
-    let notEligible = Number(result[0].notEligible || 0);
+    let total = Number(result[0]?.total || 0);
+    let eligible = Number(result[0]?.eligible || 0);
+    let notEligible = Number(result[0]?.notEligible ?? result[0]?.noteligible ?? 0);
     let percentage = total > 0 ? ((eligible / total) * 100).toFixed(2) : 0;
 
     res.json({ total, eligible, notEligible, percentage });
@@ -105,8 +119,8 @@ router.get('/group-by/:type', requireAdmin, async (req, res) => {
       SELECT 
         ${selectFields},
         COUNT(esd.id) as total,
-        SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as eligible,
-        SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as notEligible
+        SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as "eligible",
+        SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as "notEligible"
       FROM "ExamStudentData" esd
       LEFT JOIN "Eligibility" e ON e."examId" = esd."examId" AND e."enrollmentNumber" = esd."enrollmentNumber"
       ${where}
@@ -140,7 +154,7 @@ router.get('/students', requireAdmin, async (req, res) => {
     if (!examId) return res.status(400).json({ error: 'Exam ID required' });
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const { where, params } = buildWhereClause(req.query);
+    const { where, params, nextParamIndex } = buildWhereClause(req.query);
 
     const countSql = `
       SELECT COUNT(esd.id) as total
@@ -149,7 +163,7 @@ router.get('/students', requireAdmin, async (req, res) => {
       ${where}
     `;
     const countResult = await prisma.$queryRawUnsafe(countSql, ...params);
-    const total = Number(countResult[0].total || 0);
+    const total = Number(countResult[0]?.total || 0);
 
     const sql = `
       SELECT 
@@ -160,7 +174,7 @@ router.get('/students', requireAdmin, async (req, res) => {
       LEFT JOIN "Eligibility" e ON e."examId" = esd."examId" AND e."enrollmentNumber" = esd."enrollmentNumber"
       ${where}
       ORDER BY esd."enrollmentNumber" ASC
-      LIMIT ? OFFSET ?
+      LIMIT $${nextParamIndex} OFFSET $${nextParamIndex + 1}
     `;
     const rows = await prisma.$queryRawUnsafe(sql, ...params, parseInt(limit), skip);
 
@@ -216,7 +230,7 @@ router.get('/export/excel', requireAdmin, async (req, res) => {
         ORDER BY esd."enrollmentNumber" ASC
       `;
       const rows = await prisma.$queryRawUnsafe(sql, ...params);
-      rows.forEach(r => worksheet.addRow(r));
+      rows.forEach(r => worksheet.addRow(sanitizeExcelRow(r)));
     } else {
       let groupByField = '';
       if (type === 'semester') groupByField = 'esd.semester';
@@ -252,8 +266,8 @@ router.get('/export/excel', requireAdmin, async (req, res) => {
         SELECT 
           ${groupByField},
           COUNT(esd.id) as total,
-          SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as eligible,
-          SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as notEligible
+          SUM(CASE WHEN e."finalEligibility" = 'ELIGIBLE' THEN 1 ELSE 0 END) as "eligible",
+          SUM(CASE WHEN e."finalEligibility" = 'NOT_ELIGIBLE' THEN 1 ELSE 0 END) as "notEligible"
         FROM "ExamStudentData" esd
         LEFT JOIN "Eligibility" e ON e."examId" = esd."examId" AND e."enrollmentNumber" = esd."enrollmentNumber"
         ${where}
@@ -264,7 +278,7 @@ router.get('/export/excel', requireAdmin, async (req, res) => {
       rows.forEach(r => {
         const obj = {};
         for (const k in r) obj[k] = typeof r[k] === 'bigint' ? Number(r[k]) : r[k];
-        worksheet.addRow(obj);
+        worksheet.addRow(sanitizeExcelRow(obj));
       });
     }
 

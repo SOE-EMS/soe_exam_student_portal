@@ -15,13 +15,14 @@ datasource db {
 // ──────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  password  String
-  role      String   @default("STUDENT")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  password    String
+  role        String   @default("STUDENT")
+  isActive    Boolean  @default(true)
+  isActivated Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   studentProfile         StudentProfile?
@@ -383,4 +384,38 @@ model HallTicketGeneratedStudent {
 
   @@unique([generationId, enrollmentNumber])
   @@index([enrollmentNumber])
+}
+
+// ──────────────────────────────────────────────
+// SESSION STORE (connect-pg-simple)
+// ──────────────────────────────────────────────
+
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@map("session")
+  @@index([expire], map: "IDX_session_expire")
+}
+
+// ──────────────────────────────────────────────
+// OTP VERIFICATION (First-Time Activation & Security)
+// ──────────────────────────────────────────────
+
+model OtpVerification {
+  id          String   @id @default(cuid())
+  email       String
+  otpHash     String
+  purpose     String   @default("ACCOUNT_ACTIVATION")
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  resendAfter DateTime
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+  @@index([expiresAt])
 }

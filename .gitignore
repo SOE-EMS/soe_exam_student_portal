@@ -10,8 +10,10 @@ node_modules/
 dist/
 build/
 
-# Uploads (local dev)
+# Uploads & Cache (local dev)
 uploads/
+public/uploads/
+storage/
 temp/
 
 # Prisma

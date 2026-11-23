@@ -159,6 +159,68 @@ async function generateSampleExcel(examId) {
 }
 
 /**
+ * Neutralize dangerous spreadsheet formula prefixes (=, +, -, @, \t, \r)
+ * to prevent CSV / Excel Formula Injection (CWE-1236)
+ */
+function sanitizeCellString(str) {
+  if (typeof str !== 'string') return str;
+  const trimmed = str.trim();
+  if (!trimmed) return trimmed;
+  if (/^[=+\-@\t\r]/.test(trimmed)) {
+    // Standalone signed numbers (e.g. "+5", "-2.5") remain numeric
+    if (/^[+\-]?\d+(\.\d+)?$/.test(trimmed)) {
+      return trimmed;
+    }
+    // Deactivate formula execution with single quote
+    return `'${trimmed}`;
+  }
+  return trimmed;
+}
+
+/**
+ * Extract clean string value from ExcelJS cell, handling hyperlinks, rich text, dates, and formulas
+ */
+function extractCellString(cell) {
+  if (!cell || cell.value === null || cell.value === undefined) return null;
+  const val = cell.value;
+
+  if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+    return sanitizeCellString(String(val).trim()) || null;
+  }
+
+  if (val instanceof Date) {
+    return val;
+  }
+
+  if (typeof val === 'object') {
+    if (typeof val.text === 'string') {
+      return sanitizeCellString(val.text.trim()) || null;
+    }
+    if (val.text && typeof val.text === 'object' && Array.isArray(val.text.richText)) {
+      return sanitizeCellString(val.text.richText.map(r => r.text || '').join('').trim()) || null;
+    }
+    if (Array.isArray(val.richText)) {
+      return sanitizeCellString(val.richText.map(r => r.text || '').join('').trim()) || null;
+    }
+    if (val.result !== undefined && val.result !== null) {
+      if (typeof val.result === 'object') {
+        return extractCellString({ value: val.result });
+      }
+      return sanitizeCellString(String(val.result).trim()) || null;
+    }
+    if (val.hyperlink) {
+      return sanitizeCellString(String(val.hyperlink).replace(/^mailto:/i, '').trim()) || null;
+    }
+  }
+
+  if (cell.text) {
+    return sanitizeCellString(String(cell.text).trim()) || null;
+  }
+
+  return sanitizeCellString(String(val).trim()) || null;
+}
+
+/**
  * Parse and validate uploaded Excel file
  * Returns parsed data + validation results
  */
@@ -184,7 +246,8 @@ async function parseAndValidateExcel(buffer, examId) {
       const yyyy = rawValue.getFullYear();
       strValue = `${dd}-${mm}-${yyyy}`;
     } else {
-      strValue = String(rawValue || '').trim();
+      const extracted = extractCellString(cell);
+      strValue = (extracted instanceof Date) ? '' : (extracted || '');
       // Handle DD/MM/YYYY or YYYY-MM-DD to DD-MM-YYYY
       if (strValue.includes('/')) {
         strValue = strValue.replace(/\//g, '-');
@@ -227,9 +290,17 @@ async function parseAndValidateExcel(buffer, examId) {
     if (rowNumber === 1) return; // skip header
 
     const getValue = (colNum) => {
+      if (!colNum) return null;
       const cell = row.getCell(colNum);
-      if (cell.value === null || cell.value === undefined) return null;
-      return String(cell.value).trim() || null;
+      const extracted = extractCellString(cell);
+      if (extracted === null || extracted === undefined) return null;
+      if (extracted instanceof Date) {
+        const dd = String(extracted.getDate()).padStart(2, '0');
+        const mm = String(extracted.getMonth() + 1).padStart(2, '0');
+        const yyyy = extracted.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+      }
+      return String(extracted).trim() || null;
     };
 
     const enrollment = getValue(fixedColMap['enrollment']);
@@ -287,7 +358,7 @@ async function parseAndValidateExcel(buffer, examId) {
 
     // Validate Student Email ID
     const studentEmailIdRaw = getValue(fixedColMap['studentemailid']);
-    let studentEmailId = studentEmailIdRaw ? studentEmailIdRaw.trim() : null;
+    let studentEmailId = studentEmailIdRaw ? studentEmailIdRaw.replace(/^mailto:/i, '').trim() : null;
     if (studentEmailId) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!emailRegex.test(studentEmailId)) {
@@ -599,4 +670,5 @@ module.exports = {
   generateSampleExcel,
   parseAndValidateExcel,
   commitExcelData,
+  sanitizeCellString,
 };

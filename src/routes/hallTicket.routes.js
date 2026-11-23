@@ -3,7 +3,17 @@ const router = express.Router();
 const prisma = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
 const { validate, hallTicketSettingsSchema } = require('../middleware/validation');
-const { generateHallTicketPDF, generateBulkHallTicketPDF } = require('../services/pdf/hallTicket.pdf');
+const {
+  generateHallTicketPDF,
+  generateBulkHallTicketPDF,
+  verifyTicketToken,
+} = require('../services/pdf/hallTicket.pdf');
+const {
+  computeCacheKey,
+  getCachedPDF,
+  saveCachedPDF,
+  invalidateExamCache,
+} = require('../services/pdfCache.service');
 const { logAudit } = require('../services/audit.service');
 
 // ──────────────────────────────────────────────
@@ -27,6 +37,9 @@ router.post('/settings/:examId', requireAdmin, validate(hallTicketSettingsSchema
         availableTo: availableTo ? new Date(availableTo) : null,
       },
     });
+
+    // Invalidate cache when settings window changes
+    invalidateExamCache(examId);
 
     await logAudit({
       userId: req.session.userId,
@@ -56,6 +69,140 @@ router.get('/settings/:examId', requireAdmin, async (req, res) => {
     res.json({ settings: settings || { availableFrom: null, availableTo: null } });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load settings.' });
+  }
+});
+
+// ──────────────────────────────────────────────
+// PUBLIC QR VERIFICATION ENDPOINT
+// ──────────────────────────────────────────────
+
+router.get('/verify/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const result = verifyTicketToken(token);
+
+    if (!result.valid) {
+      if (req.accepts('html')) {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>PPSU - Verification Failed</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+          </head>
+          <body class="bg-light d-flex align-items-center min-vh-100">
+            <div class="container text-center py-5">
+              <div class="card shadow-sm mx-auto p-4 border-danger" style="max-width: 450px; border-radius: 16px;">
+                <div class="text-danger mb-3"><i class="fas fa-times-circle fa-4x"></i></div>
+                <h4 class="text-danger fw-bold">Verification Failed</h4>
+                <p class="text-muted mt-2">The QR code or verification token is invalid or has been tampered with.</p>
+                <div class="badge bg-danger text-wrap p-2 mt-2">Tampered / Forged Token</div>
+              </div>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      return res.status(400).json({ valid: false, error: result.error });
+    }
+
+    const { examId, enrollmentNumber } = result;
+
+    const [exam, studentData, eligibility] = await Promise.all([
+      prisma.exam.findUnique({
+        where: { id: examId },
+        include: { academicYear: true },
+      }),
+      prisma.examStudentData.findUnique({
+        where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
+        include: { subjects: true },
+      }),
+      prisma.eligibility.findUnique({
+        where: { examId_enrollmentNumber: { examId, enrollmentNumber } },
+      }),
+    ]);
+
+    if (!exam || !studentData) {
+      return res.status(404).json({ valid: false, error: 'Student or Exam record not found' });
+    }
+
+    const isEligible = eligibility && eligibility.finalEligibility === 'ELIGIBLE';
+
+    if (req.accepts('html')) {
+      const statusColor = isEligible ? 'success' : 'danger';
+      const statusBadge = isEligible ? 'VERIFIED OFFICIAL ADMIT CARD' : 'NOT ELIGIBLE / REVOKED';
+      const statusIcon = isEligible ? 'fa-check-circle' : 'fa-exclamation-triangle';
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>PPSU Hall Ticket Verification</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+          <style>
+            body { background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            .verification-card { max-width: 480px; border-radius: 16px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+            .header-banner { background: #1e3a5f; color: white; border-radius: 16px 16px 0 0; padding: 20px; }
+          </style>
+        </head>
+        <body class="d-flex align-items-center min-vh-100 py-4">
+          <div class="container">
+            <div class="card verification-card mx-auto">
+              <div class="header-banner text-center">
+                <h5 class="fw-bold mb-1">P P Savani University</h5>
+                <div style="font-size: 13px; opacity: 0.9;">School of Engineering &bull; Examination Authority</div>
+              </div>
+              <div class="card-body p-4 text-center">
+                <div class="text-${statusColor} mb-2">
+                  <i class="fas ${statusIcon} fa-3x"></i>
+                </div>
+                <span class="badge bg-${statusColor} px-3 py-2 fs-6 mb-3">${statusBadge}</span>
+
+                <div class="text-start bg-light p-3 rounded border mt-3" style="font-size: 14px;">
+                  <div class="mb-2"><strong>Student Name:</strong> ${studentData.studentName}</div>
+                  <div class="mb-2"><strong>Enrollment No:</strong> ${studentData.enrollmentNumber}</div>
+                  <div class="mb-2"><strong>Program &amp; Sem:</strong> ${studentData.program} (Sem ${studentData.semester})</div>
+                  <div class="mb-2"><strong>Exam:</strong> ${exam.name} (${exam.academicYear.name})</div>
+                  <div class="mb-2"><strong>Total Subjects:</strong> ${studentData.subjects.length}</div>
+                  <div><strong>Verified At:</strong> ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                </div>
+
+                <div class="text-muted small mt-3">
+                  <i class="fas fa-lock me-1"></i> Cryptographically Signed &amp; Verified
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    res.json({
+      valid: true,
+      status: isEligible ? 'ELIGIBLE' : 'REVOKED',
+      student: {
+        name: studentData.studentName,
+        enrollmentNumber: studentData.enrollmentNumber,
+        program: studentData.program,
+        semester: studentData.semester,
+      },
+      exam: {
+        name: exam.name,
+        academicYear: exam.academicYear.name,
+      },
+      subjectsCount: studentData.subjects.length,
+      verifiedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Verify] Error:', error.message);
+    res.status(500).json({ valid: false, error: 'Verification failed' });
   }
 });
 
@@ -140,6 +287,20 @@ async function buildHallTicket(examId, enrollmentNumber) {
   const schedules = studentData.subjects.map(s => s.examSchedule).filter(Boolean);
   schedules.sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
 
+  // Check PDF Cache (Exam-Eve Rush Optimization)
+  const cacheKey = computeCacheKey({
+    examId,
+    enrollmentNumber,
+    photoUrl: profile?.photoUrl,
+    schedules,
+    eligibilityStatus: eligibility.finalEligibility,
+  });
+
+  const cachedBuffer = await getCachedPDF(examId, enrollmentNumber, cacheKey);
+  if (cachedBuffer) {
+    return { pdf: cachedBuffer, studentName: studentData.studentName, fromCache: true };
+  }
+
   const pdf = await generateHallTicketPDF(
     {
       name: studentData.studentName,
@@ -149,6 +310,9 @@ async function buildHallTicket(examId, enrollmentNumber) {
       division: studentData.division,
     },
     {
+      id: exam.id,
+      examId: exam.id,
+      name: exam.name,
       examName: exam.name,
       academicYear: exam.academicYear.name,
     },
@@ -157,7 +321,10 @@ async function buildHallTicket(examId, enrollmentNumber) {
     profile?.photoUrl || null
   );
 
-  return { pdf, studentName: studentData.studentName };
+  // Save to cache asynchronously without blocking
+  await saveCachedPDF(examId, enrollmentNumber, cacheKey, pdf);
+
+  return { pdf, studentName: studentData.studentName, fromCache: false };
 }
 
 /**

@@ -4,22 +4,61 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 
 /**
- * Helmet security headers
+ * Helmet security headers with tuned Content Security Policy (CSP)
  */
 function helmetMiddleware() {
   return helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdn.jsdelivr.net',
+          'https://cdnjs.cloudflare.com',
+          'https://cdn.tailwindcss.com',
+        ],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdn.jsdelivr.net',
+          'https://cdnjs.cloudflare.com',
+          'https://fonts.googleapis.com',
+        ],
+        fontSrc: [
+          "'self'",
+          'https://cdnjs.cloudflare.com',
+          'https://fonts.gstatic.com',
+          'data:',
+        ],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'blob:',
+          'https://res.cloudinary.com',
+        ],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   });
 }
 
 /**
- * General API rate limiter
+ * General API rate limiter (prevents abuse while allowing peak exam download traffic)
  */
 function apiRateLimiter() {
+  const maxRequests = parseInt(process.env.API_RATE_LIMIT_MAX, 10) || 300;
   return rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,
+    max: maxRequests,
     message: { error: 'Too many requests, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,

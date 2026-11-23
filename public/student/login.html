@@ -3,21 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Login — SOE Examination Portal</title>
-  <meta name="description" content="Student login for Hall Ticket & Examination Management System">
+  <title>Student Portal — Login & Account Activation</title>
+  <meta name="description" content="Student login and first-time account activation for SOE Examination Portal">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
   <style>
     :root {
       --primary: #1e40af;
       --primary-light: #3b82f6;
       --accent: #06b6d4;
       --surface: #ffffff;
-      --bg: #f0f4f8;
-      --text: #1e293b;
+      --bg: #f8fafc;
+      --text: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
-      --shadow-lg: 0 12px 40px rgba(30, 64, 175, 0.1);
+      --success: #10b981;
+      --danger: #ef4444;
+      --shadow-lg: 0 16px 48px -8px rgba(30, 64, 175, 0.12);
       --radius: 16px;
     }
 
@@ -25,32 +28,32 @@
 
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0;
+      padding: 24px 16px;
       color: var(--text);
     }
 
-    .login-wrapper {
+    .portal-wrapper {
       width: 100%;
-      max-width: 460px;
-      padding: 20px;
+      max-width: 500px;
     }
 
-    .login-card {
+    .portal-card {
       background: var(--surface);
       border-radius: var(--radius);
       box-shadow: var(--shadow-lg);
-      padding: 48px 40px;
+      padding: 40px 36px;
       border: 1px solid var(--border);
       position: relative;
       overflow: hidden;
     }
 
-    .login-card::before {
+    .portal-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -60,25 +63,21 @@
 
     .logo-section {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 28px;
     }
 
     .logo-icon {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
       border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 16px;
-      box-shadow: 0 8px 24px rgba(6, 182, 212, 0.2);
-    }
-
-    .logo-icon svg {
-      width: 32px;
-      height: 32px;
-      fill: white;
+      margin: 0 auto 14px;
+      box-shadow: 0 8px 24px rgba(30, 64, 175, 0.2);
+      color: white;
+      font-size: 26px;
     }
 
     .logo-section h1 {
@@ -90,14 +89,115 @@
     }
 
     .logo-section p {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text-muted);
       margin: 0;
     }
 
-    .form-label {
-      font-size: 13px;
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
       font-weight: 600;
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Steps Indicator */
+    .steps-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .steps-nav::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 20px;
+      right: 20px;
+      height: 2px;
+      background: var(--border);
+      z-index: 1;
+    }
+
+    .step-item {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .step-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s;
+    }
+
+    .step-item.active .step-circle {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .step-item.done .step-circle {
+      background: var(--success);
+      color: white;
+    }
+
+    .step-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .step-item.active .step-label {
+      color: var(--primary);
+    }
+
+    /* Form Inputs */
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
       color: var(--text);
       margin-bottom: 6px;
       text-transform: uppercase;
@@ -108,402 +208,884 @@
       border: 1.5px solid var(--border);
       border-radius: 10px;
       padding: 12px 16px;
-      font-size: 15px;
-      font-family: 'Inter', sans-serif;
-      transition: all 0.2s ease;
+      font-size: 14px;
+      transition: all 0.2s;
       background: #f8fafc;
     }
 
     .form-control:focus {
       border-color: var(--primary-light);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       background: white;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
       outline: none;
     }
 
-    .btn-primary-custom {
+    .input-group-custom {
+      position: relative;
+    }
+
+    .input-icon-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 6px;
+    }
+
+    .input-icon-btn:hover {
+      color: var(--primary);
+    }
+
+    .btn-submit {
       width: 100%;
       padding: 13px;
       background: linear-gradient(135deg, var(--primary), var(--primary-light));
       color: white;
       border: none;
       border-radius: 10px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
-      font-family: 'Inter', sans-serif;
       cursor: pointer;
-      transition: all 0.25s ease;
-      margin-top: 8px;
-      letter-spacing: 0.3px;
+      transition: all 0.2s;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
-    .btn-primary-custom:hover {
+    .btn-submit:hover:not(:disabled) {
       box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
       transform: translateY(-1px);
     }
 
-    .btn-primary-custom:active { transform: translateY(0); }
-    .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-    .tab-buttons {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 28px;
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 4px;
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
-    .tab-btn {
-      flex: 1;
-      padding: 10px;
-      border: none;
+    .btn-secondary-custom {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      font-family: 'Inter', sans-serif;
+      background: white;
+      font-size: 13px;
+      color: var(--text);
       cursor: pointer;
       transition: all 0.2s;
-      background: transparent;
-      color: var(--text-muted);
     }
 
-    .tab-btn.active {
-      background: white;
-      color: var(--primary);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    .btn-secondary-custom:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    /* Alerts */
+    .alert {
+      border-radius: 10px;
+      font-size: 13px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+    .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+
+    /* Photo Upload Area */
+    .photo-dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .photo-dropzone:hover, .photo-dropzone.dragover {
+      border-color: var(--primary-light);
+      background: #eff6ff;
+    }
+
+    .photo-preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .photo-preview-img {
+      width: 70px;
+      height: 90px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 2px solid var(--border);
+    }
+
+    .badge-size {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 20px;
       font-weight: 600;
     }
 
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .badge-size-ok { background: #dcfce7; color: #15803d; }
+    .badge-size-err { background: #fee2e2; color: #b91c1c; }
 
-    .admin-link {
-      text-align: center;
-      margin-top: 24px;
-      padding-top: 20px;
-      border-top: 1px solid var(--border);
+    .compress-box {
+      margin-top: 10px;
+      padding: 12px;
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #92400e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
-
-    .admin-link a {
-      color: var(--primary-light);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .admin-link a:hover {
-      color: var(--primary);
-      text-decoration: underline;
-    }
-
-    .alert {
-      border-radius: 10px;
-      font-size: 14px;
-      border: none;
-      padding: 12px 16px;
-    }
-
-    .alert-danger { background: #fef2f2; color: #991b1b; }
-    .alert-success { background: #f0fdf4; color: #166534; }
-    .alert-info { background: #eff6ff; color: #1e40af; }
 
     .info-card {
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 16px;
+      padding: 14px 16px;
       margin-bottom: 20px;
+      font-size: 13px;
     }
 
-    .info-card .label {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
+    .otp-input-field {
+      letter-spacing: 8px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      font-family: monospace;
     }
 
-    .info-card .value {
-      font-size: 14px;
+    .portal-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .portal-footer a {
+      color: var(--primary-light);
+      text-decoration: none;
       font-weight: 500;
-      color: var(--text);
     }
 
-    .spinner-border-sm {
-      width: 18px;
-      height: 18px;
-      border-width: 2px;
-    }
-
-    @media (max-width: 480px) {
-      .login-card { padding: 32px 24px; }
+    .portal-footer a:hover {
+      text-decoration: underline;
     }
   </style>
 
-  <!-- Responsive Overrides -->
   <link rel="stylesheet" href="/css/mobile-responsive.css">
   <script src="/js/mobile-nav.js"></script>
 </head>
 <body>
-  <div class="login-wrapper">
-    <div class="login-card">
+  <div class="portal-wrapper">
+    <div class="portal-card">
       <div class="logo-section">
         <div class="logo-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
+          <i class="fas fa-graduation-cap"></i>
         </div>
-        <h1>Student Portal</h1>
-        <p>School of Engineering</p>
+        <h1>SOE Examination Portal</h1>
+        <p>School of Engineering &bull; Student Access</p>
       </div>
 
-      <div id="alert-container"></div>
+      <div id="alertBox"></div>
 
-      <!-- Tabs -->
-      <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="login" id="tab-login-btn">Login</button>
-        <button class="tab-btn" data-tab="register" id="tab-register-btn">Register</button>
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabLoginBtn" onclick="switchMainTab('login')">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+        <button class="tab-btn" id="tabActivateBtn" onclick="switchMainTab('activate')">
+          <i class="fas fa-key"></i> First-Time Activation
+        </button>
       </div>
 
-      <!-- Login Tab -->
-      <div class="tab-content active" id="tab-login">
-        <form id="loginForm" novalidate>
+      <!-- ════════════════════════════════════════════ -->
+      <!-- TAB 1: REGULAR LOGIN -->
+      <!-- ════════════════════════════════════════════ -->
+      <div class="tab-panel active" id="panelLogin">
+        <form id="formLogin" novalidate>
           <div class="mb-3">
-            <label for="login-enrollment" class="form-label">Enrollment Number</label>
-            <input type="text" class="form-control" id="login-enrollment"
-                   placeholder="e.g., 24CE001" required>
+            <label class="form-label" for="loginEmail">College Email or Enrollment No.</label>
+            <input type="text" class="form-control" id="loginEmail" placeholder="e.g. student@soe.edu or 24CE001" required>
           </div>
+
           <div class="mb-4">
-            <label for="login-password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="login-password"
-                   placeholder="Enter password" required autocomplete="current-password">
+            <label class="form-label" for="loginPassword">Password</label>
+            <div class="input-group-custom">
+              <input type="password" class="form-control" id="loginPassword" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="input-icon-btn" onclick="togglePass('loginPassword', this)">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
           </div>
-          <button type="submit" class="btn-primary-custom" id="loginBtn">Sign In</button>
+
+          <button type="submit" class="btn-submit" id="btnSignIn">
+            <span>Sign In to Dashboard</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
         </form>
+
+        <div class="info-card mt-4 text-center">
+          First time here?
+          <a href="javascript:void(0)" onclick="switchMainTab('activate')" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+            Activate your account with OTP &rarr;
+          </a>
+        </div>
       </div>
 
-      <!-- Register Tab -->
-      <div class="tab-content" id="tab-register">
-        <!-- Step 1: Verify Enrollment -->
-        <div id="register-step1">
-          <form id="verifyForm" novalidate>
-            <div class="mb-4">
-              <label for="reg-enrollment" class="form-label">Enrollment Number</label>
-              <input type="text" class="form-control" id="reg-enrollment"
-                     placeholder="e.g., 24CE001" required>
-              <small class="text-muted mt-1 d-block">Enter the enrollment number provided by your institution.</small>
+      <!-- ════════════════════════════════════════════ -->
+      <!-- TAB 2: FIRST-TIME ACCOUNT ACTIVATION -->
+      <!-- ════════════════════════════════════════════ -->
+      <div class="tab-panel" id="panelActivate">
+        <!-- Steps Nav -->
+        <div class="steps-nav">
+          <div class="step-item active" id="stepItem1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Email</div>
+          </div>
+          <div class="step-item" id="stepItem2">
+            <div class="step-circle">2</div>
+            <div class="step-label">OTP</div>
+          </div>
+          <div class="step-item" id="stepItem3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Profile</div>
+          </div>
+        </div>
+
+        <!-- ─── ACTIVATION STEP 1: ENTER EMAIL ─── -->
+        <div id="actStep1">
+          <form id="formCheckEmail" novalidate>
+            <div class="mb-3">
+              <label class="form-label" for="actEmail">Registered College Email</label>
+              <input type="email" class="form-control" id="actEmail" placeholder="e.g. yourname@soe.edu" required>
+              <small class="text-muted mt-1 d-block">
+                Enter the college email address registered by your administrator.
+              </small>
             </div>
-            <button type="submit" class="btn-primary-custom" id="verifyBtn">Verify Enrollment</button>
+            <button type="submit" class="btn-submit" id="btnSendOtp">
+              <span>Send Verification Code</span>
+              <i class="fas fa-paper-plane"></i>
+            </button>
           </form>
         </div>
 
-        <!-- Step 2: Registration Form (shown after verification) -->
-        <div id="register-step2" style="display: none;">
-          <div class="info-card mb-3">
-            <div class="row g-2">
-              <div class="col-6">
-                <div class="label">Name</div>
-                <div class="value" id="reg-name-display">—</div>
-              </div>
-              <div class="col-6">
-                <div class="label">Enrollment</div>
-                <div class="value" id="reg-enroll-display">—</div>
-              </div>
-              <div class="col-6 mt-2">
-                <div class="label">Program</div>
-                <div class="value" id="reg-program-display">—</div>
-              </div>
-              <div class="col-6 mt-2">
-                <div class="label">Semester</div>
-                <div class="value" id="reg-semester-display">—</div>
-              </div>
-            </div>
+        <!-- ─── ACTIVATION STEP 2: VERIFY OTP ─── -->
+        <div id="actStep2" style="display: none;">
+          <div class="info-card">
+            <div style="font-size: 12px; color: var(--text-muted);">VERIFICATION CODE SENT TO</div>
+            <div style="font-weight: 700; color: var(--primary);" id="displayMaskedEmail">—</div>
           </div>
 
-          <form id="registerForm" novalidate>
+          <form id="formVerifyOtp" novalidate>
             <div class="mb-3">
-              <label for="reg-photo" class="form-label">Upload Photo</label>
-              <input type="file" class="form-control" id="reg-photo"
-                     accept="image/jpeg,image/png,image/jpg" required>
-              <small class="text-muted mt-1 d-block">JPG/PNG, max 2MB, passport-size recommended.</small>
+              <label class="form-label" for="actOtp">6-Digit Verification Code</label>
+              <input type="text" class="form-control otp-input-field" id="actOtp" maxlength="6" placeholder="000000" required autocomplete="one-time-code">
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted">Code valid for 10 minutes</small>
+                <button type="button" class="btn btn-link p-0 text-decoration-none" id="btnResendOtp" onclick="resendOtp()" style="font-size: 13px;" disabled>
+                  Resend Code (<span id="resendTimer">60</span>s)
+                </button>
+              </div>
             </div>
+
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-secondary-custom" onclick="goToStep(1)">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+              <button type="submit" class="btn-submit mt-0 flex-grow-1" id="btnVerifyCode">
+                <span>Verify Code</span>
+                <i class="fas fa-check"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ─── ACTIVATION STEP 3: PASSWORD & 50 KB PHOTO ─── -->
+        <div id="actStep3" style="display: none;">
+          <div class="info-card mb-3">
+            <div style="font-size: 12px; color: var(--text-muted);">ACTIVATING ACCOUNT FOR</div>
+            <div style="font-weight: 700; color: var(--primary);" id="displayStudentName">—</div>
+            <div style="font-size: 12px; color: var(--text-muted);" id="displayEnrollment">—</div>
+          </div>
+
+          <form id="formCompleteActivation" novalidate>
+            <!-- Create Password -->
             <div class="mb-3">
-              <label for="reg-password" class="form-label">Create Password</label>
-              <input type="password" class="form-control" id="reg-password"
-                     placeholder="Min 8 characters" required minlength="8" autocomplete="new-password">
+              <label class="form-label" for="actPassword">Create Password *</label>
+              <div class="input-group-custom">
+                <input type="password" class="form-control" id="actPassword" minlength="8" placeholder="Minimum 8 characters" required autocomplete="new-password">
+                <button type="button" class="input-icon-btn" onclick="togglePass('actPassword', this)">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
             </div>
+
+            <!-- Confirm Password -->
+            <div class="mb-3">
+              <label class="form-label" for="actConfirmPassword">Confirm Password *</label>
+              <div class="input-group-custom">
+                <input type="password" class="form-control" id="actConfirmPassword" minlength="8" placeholder="Re-enter password" required autocomplete="new-password">
+                <button type="button" class="input-icon-btn" onclick="togglePass('actConfirmPassword', this)">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Profile Photo Upload (Strict 50 KB) -->
             <div class="mb-4">
-              <label for="reg-confirm-password" class="form-label">Confirm Password</label>
-              <input type="password" class="form-control" id="reg-confirm-password"
-                     placeholder="Re-enter password" required autocomplete="new-password">
+              <label class="form-label">
+                Profile Photo *
+                <span class="badge bg-primary-subtle text-primary ms-1" style="font-size: 10px;">Max 50 KB</span>
+              </label>
+
+              <input type="file" id="photoFileInput" accept="image/jpeg,image/png,image/jpg" style="display: none;" onchange="handleFileSelect(this)">
+
+              <div class="photo-dropzone" id="dropzone" onclick="document.getElementById('photoFileInput').click()">
+                <i class="fas fa-cloud-upload-alt fa-2x mb-2" style="color: var(--primary-light);"></i>
+                <div style="font-size: 13px; font-weight: 600;">Click to upload passport-size photo</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">JPG, JPEG, or PNG &bull; Strict max size: 50 KB</div>
+              </div>
+
+              <!-- Preview Block -->
+              <div id="photoPreviewBlock" style="display: none;">
+                <div class="photo-preview-wrap">
+                  <img id="photoPreviewImg" class="photo-preview-img" alt="Preview">
+                  <div class="flex-grow-1">
+                    <div style="font-size: 13px; font-weight: 600;" id="photoFileName">—</div>
+                    <div class="mt-1">
+                      <span id="photoSizeBadge" class="badge-size badge-size-ok">0 KB</span>
+                    </div>
+                    <div class="mt-2">
+                      <button type="button" class="btn btn-sm btn-link p-0 text-danger" onclick="removePhoto()" style="font-size: 12px;">
+                        <i class="fas fa-trash-alt"></i> Remove photo
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Over-limit compression suggestion banner -->
+                <div id="compressionOffer" class="compress-box" style="display: none;">
+                  <div>
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <strong>Over 50 KB limit.</strong> Auto-compress to &le; 50 KB?
+                  </div>
+                  <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" onclick="autoCompressPhoto()">
+                    <i class="fas fa-compress-arrows-alt"></i> Compress Now
+                  </button>
+                </div>
+              </div>
             </div>
-            <button type="submit" class="btn-primary-custom" id="registerBtn">Create Account</button>
+
+            <!-- Privacy Notice & Consent (DPDP Act 2023) -->
+            <div class="mb-3 p-3 bg-light rounded border" style="font-size: 11.5px; line-height: 1.5; color: #4b5563;">
+              <div class="fw-bold text-dark mb-1"><i class="fas fa-shield-alt text-primary me-1"></i> Examination Data Privacy Notice</div>
+              <div>Your photograph, enrollment ID, and academic records are processed strictly for exam verification, admit cards, and hall tickets. Information is protected and never shared for non-academic purposes.</div>
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="consentCheckbox" required>
+                <label class="form-check-label text-dark fw-semibold" for="consentCheckbox" style="font-size: 12px;">
+                  I consent to the use of my photograph and academic data for Hall Ticket generation.
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnCompleteActivation">
+              <span>Complete Activation & Sign In</span>
+              <i class="fas fa-check-circle"></i>
+            </button>
           </form>
         </div>
       </div>
 
-      <div class="admin-link">
-        <a href="/admin/login">← Admin Portal</a>
+      <div class="portal-footer">
+        <a href="/admin/login"><i class="fas fa-user-shield me-1"></i> Admin Portal Login</a>
       </div>
     </div>
   </div>
 
   <script>
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        alertContainer.innerHTML = '';
-      });
-    });
+    // State management
+    let currentActivationEmail = '';
+    let currentOtp = '';
+    let currentPhotoFile = null;
+    let resendCountdownTimer = null;
 
-    const alertContainer = document.getElementById('alert-container');
+    // Check if user is already logged in
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.role === 'STUDENT') {
+            window.location.href = '/student/dashboard';
+          }
+        }
+      } catch (e) {}
+    }
+    checkAuth();
 
-    function showAlert(message, type = 'danger') {
-      alertContainer.innerHTML = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+    function showAlert(msg, type = 'danger') {
+      const box = document.getElementById('alertBox');
+      const icon = type === 'success' ? 'fa-check-circle' : (type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle');
+      box.innerHTML = `
+        <div class="alert alert-${type}">
+          <i class="fas ${icon}"></i>
+          <div>${msg}</div>
+        </div>
+      `;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Student Login
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      alertContainer.innerHTML = '';
-      const enrollment = document.getElementById('login-enrollment').value.trim();
-      const password = document.getElementById('login-password').value;
+    function clearAlert() {
+      document.getElementById('alertBox').innerHTML = '';
+    }
 
-      if (!enrollment || !password) {
-        showAlert('Please enter enrollment number and password.');
+    function switchMainTab(tab) {
+      clearAlert();
+      const loginBtn = document.getElementById('tabLoginBtn');
+      const actBtn = document.getElementById('tabActivateBtn');
+      const panelLogin = document.getElementById('panelLogin');
+      const panelActivate = document.getElementById('panelActivate');
+
+      if (tab === 'login') {
+        loginBtn.classList.add('active');
+        actBtn.classList.remove('active');
+        panelLogin.classList.add('active');
+        panelActivate.classList.remove('active');
+      } else {
+        loginBtn.classList.remove('active');
+        actBtn.classList.add('active');
+        panelLogin.classList.remove('active');
+        panelActivate.classList.add('active');
+      }
+    }
+
+    function togglePass(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+
+    function goToStep(step) {
+      clearAlert();
+      document.getElementById('actStep1').style.display = step === 1 ? 'block' : 'none';
+      document.getElementById('actStep2').style.display = step === 2 ? 'block' : 'none';
+      document.getElementById('actStep3').style.display = step === 3 ? 'block' : 'none';
+
+      for (let i = 1; i <= 3; i++) {
+        const item = document.getElementById(`stepItem${i}`);
+        item.classList.remove('active', 'done');
+        if (i < step) item.classList.add('done');
+        else if (i === step) item.classList.add('active');
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // LOGIN FORM SUBMIT
+    // ──────────────────────────────────────────
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+
+      const identifier = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('btnSignIn');
+
+      if (!identifier || !password) {
+        showAlert('Please enter both your college email / enrollment number and password.');
         return;
       }
 
-      const btn = document.getElementById('loginBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Signing in...';
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
 
       try {
         const res = await fetch('/api/auth/student/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enrollmentNumber: enrollment, password }),
+          body: JSON.stringify({ email: identifier, password }),
         });
+
         const data = await res.json();
+
         if (res.ok) {
-          window.location.href = '/student/dashboard';
+          showAlert('Login successful! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = '/student/dashboard';
+          }, 800);
         } else {
-          showAlert(data.error || 'Invalid credentials.');
+          if (data.notActivated) {
+            showAlert(data.error + ' Switch to the First-Time Activation tab.', 'info');
+            document.getElementById('actEmail').value = data.email || identifier;
+            setTimeout(() => switchMainTab('activate'), 1500);
+          } else {
+            showAlert(data.error || 'Invalid credentials.');
+          }
         }
       } catch (err) {
-        showAlert('Network error. Please try again.');
+        showAlert('Network error. Please check your connection and try again.');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Sign In';
+        btn.innerHTML = '<span>Sign In to Dashboard</span><i class="fas fa-arrow-right"></i>';
       }
     });
 
-    // Step 1: Verify Enrollment
-    let verifiedStudentData = null;
-
-    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+    // ──────────────────────────────────────────
+    // ACTIVATION STEP 1: CHECK EMAIL & SEND OTP
+    // ──────────────────────────────────────────
+    document.getElementById('formCheckEmail').addEventListener('submit', async (e) => {
       e.preventDefault();
-      alertContainer.innerHTML = '';
-      const enrollment = document.getElementById('reg-enrollment').value.trim();
+      clearAlert();
 
-      if (!enrollment) {
-        showAlert('Please enter your enrollment number.');
+      const email = document.getElementById('actEmail').value.trim();
+      const btn = document.getElementById('btnSendOtp');
+
+      if (!email) {
+        showAlert('Please enter your college email address.');
         return;
       }
 
-      const btn = document.getElementById('verifyBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verifying...';
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending verification code...';
 
       try {
-        const res = await fetch('/api/auth/student/verify-enrollment', {
+        const res = await fetch('/api/auth/student/check-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enrollmentNumber: enrollment }),
+          body: JSON.stringify({ email }),
         });
+
         const data = await res.json();
 
-        if (res.ok && data.verified) {
-          verifiedStudentData = data.student;
-          document.getElementById('reg-name-display').textContent = data.student.name;
-          document.getElementById('reg-enroll-display').textContent = data.student.enrollmentNumber;
-          document.getElementById('reg-program-display').textContent = data.student.program;
-          document.getElementById('reg-semester-display').textContent = 'Sem ' + data.student.semester;
-          document.getElementById('register-step1').style.display = 'none';
-          document.getElementById('register-step2').style.display = 'block';
-          showAlert('Enrollment verified! Complete registration below.', 'success');
+        if (res.ok) {
+          if (data.isActivated) {
+            showAlert('This account is already activated. Please sign in with your password.', 'info');
+            document.getElementById('loginEmail').value = email;
+            switchMainTab('login');
+            return;
+          }
+
+          currentActivationEmail = email;
+          document.getElementById('displayMaskedEmail').textContent = email;
+          document.getElementById('displayStudentName').textContent = data.studentName || 'Student';
+          document.getElementById('displayEnrollment').textContent = data.enrollmentNumber ? `Enrollment: ${data.enrollmentNumber}` : '';
+
+          goToStep(2);
+          startResendCountdown(data.resendCooldown || 60);
+          showAlert(data.message || 'Verification code sent to your email.', 'info');
         } else {
-          showAlert(data.error || 'Enrollment number not found in admin data.');
+          showAlert(data.error || 'Failed to verify email address.');
         }
       } catch (err) {
         showAlert('Network error. Please try again.');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Verify Enrollment';
+        btn.innerHTML = '<span>Send Verification Code</span><i class="fas fa-paper-plane"></i>';
       }
     });
 
-    // Step 2: Register
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      alertContainer.innerHTML = '';
+    function startResendCountdown(seconds) {
+      if (resendCountdownTimer) clearInterval(resendCountdownTimer);
+      const resendBtn = document.getElementById('btnResendOtp');
+      const timerSpan = document.getElementById('resendTimer');
+      let remaining = seconds;
 
-      const password = document.getElementById('reg-password').value;
-      const confirmPassword = document.getElementById('reg-confirm-password').value;
-      const photoFile = document.getElementById('reg-photo').files[0];
+      resendBtn.disabled = true;
+      timerSpan.textContent = remaining;
 
-      if (!photoFile) {
-        showAlert('Please upload your photo.');
-        return;
-      }
-      if (photoFile.size > 2 * 1024 * 1024) {
-        showAlert('Photo must be under 2MB.');
-        return;
-      }
-      if (password.length < 8) {
-        showAlert('Password must be at least 8 characters.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        showAlert('Passwords do not match.');
-        return;
-      }
+      resendCountdownTimer = setInterval(() => {
+        remaining--;
+        timerSpan.textContent = remaining;
+        if (remaining <= 0) {
+          clearInterval(resendCountdownTimer);
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend Code';
+        }
+      }, 1000);
+    }
 
-      const btn = document.getElementById('registerBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creating account...';
+    async function resendOtp() {
+      clearAlert();
+      const resendBtn = document.getElementById('btnResendOtp');
+      resendBtn.disabled = true;
+      resendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Resending...';
 
       try {
-        const formData = new FormData();
-        formData.append('enrollmentNumber', verifiedStudentData.enrollmentNumber);
-        formData.append('password', password);
-        formData.append('photo', photoFile);
+        const res = await fetch('/api/auth/student/resend-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentActivationEmail }),
+        });
 
-        const res = await fetch('/api/auth/student/register', {
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('A fresh verification code has been sent to your email.', 'success');
+          startResendCountdown(60);
+        } else {
+          showAlert(data.error || 'Failed to resend code.');
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend Code';
+        }
+      } catch {
+        showAlert('Network error resending code.');
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend Code';
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // ACTIVATION STEP 2: VERIFY OTP
+    // ──────────────────────────────────────────
+    document.getElementById('formVerifyOtp').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+
+      const otp = document.getElementById('actOtp').value.trim();
+      const btn = document.getElementById('btnVerifyCode');
+
+      if (!otp || otp.length < 4) {
+        showAlert('Please enter the 6-digit code received on your email.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+
+      try {
+        const res = await fetch('/api/auth/student/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentActivationEmail, otp }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          currentOtp = otp;
+          goToStep(3);
+          showAlert('Email verified successfully! Please set your password and upload your photo.', 'success');
+        } else {
+          showAlert(data.error || 'Invalid verification code.');
+        }
+      } catch (err) {
+        showAlert('Network error verifying code.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Verify Code</span><i class="fas fa-check"></i>';
+      }
+    });
+
+    // ──────────────────────────────────────────
+    // PHOTO UPLOAD & AUTO-COMPRESSION (STRICT 50 KB)
+    // ──────────────────────────────────────────
+    const MAX_SIZE_BYTES = 50 * 1024; // 50 KB
+
+    function handleFileSelect(input) {
+      clearAlert();
+      const file = input.files[0];
+      if (!file) return;
+
+      processSelectedFile(file);
+    }
+
+    function processSelectedFile(file) {
+      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        showAlert('Invalid file type. Only JPG, JPEG, and PNG images are allowed.');
+        removePhoto();
+        return;
+      }
+
+      const sizeKb = (file.size / 1024).toFixed(1);
+      const isOver = file.size > MAX_SIZE_BYTES;
+
+      currentPhotoFile = file;
+
+      // Update UI
+      document.getElementById('dropzone').style.display = 'none';
+      document.getElementById('photoPreviewBlock').style.display = 'block';
+      document.getElementById('photoFileName').textContent = file.name;
+
+      const sizeBadge = document.getElementById('photoSizeBadge');
+      sizeBadge.textContent = `${sizeKb} KB / 50 KB`;
+
+      if (isOver) {
+        sizeBadge.className = 'badge-size badge-size-err';
+        document.getElementById('compressionOffer').style.display = 'flex';
+        showAlert(`Image size is ${sizeKb} KB. Maximum allowed size is 50 KB. Click "Compress Now" below to compress automatically.`);
+      } else {
+        sizeBadge.className = 'badge-size badge-size-ok';
+        document.getElementById('compressionOffer').style.display = 'none';
+      }
+
+      // Read for preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('photoPreviewImg').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removePhoto() {
+      currentPhotoFile = null;
+      document.getElementById('photoFileInput').value = '';
+      document.getElementById('dropzone').style.display = 'block';
+      document.getElementById('photoPreviewBlock').style.display = 'none';
+      document.getElementById('compressionOffer').style.display = 'none';
+    }
+
+    // Auto-compress photo to strictly under 50 KB using Canvas
+    function autoCompressPhoto() {
+      if (!currentPhotoFile) return;
+
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.onload = () => {
+          // Standard passport proportion: ~300x400 max
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 400;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Iterate quality to guarantee < 50 KB
+          let quality = 0.85;
+          function attemptCompression() {
+            canvas.toBlob((blob) => {
+              if (blob.size > MAX_SIZE_BYTES && quality > 0.3) {
+                quality -= 0.1;
+                attemptCompression();
+              } else {
+                const compressedFile = new File([blob], currentPhotoFile.name.replace(/\.[^/.]+$/, "") + "-compressed.jpg", {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                processSelectedFile(compressedFile);
+                showAlert(`Successfully compressed to ${(compressedFile.size / 1024).toFixed(1)} KB (under 50 KB limit).`, 'success');
+              }
+            }, 'image/jpeg', quality);
+          }
+
+          attemptCompression();
+        };
+        img.src = e.target.result;
+      };
+
+      reader.readAsDataURL(currentPhotoFile);
+    }
+
+    // ──────────────────────────────────────────
+    // ACTIVATION STEP 3: COMPLETE ACTIVATION
+    // ──────────────────────────────────────────
+    document.getElementById('formCompleteActivation').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+
+      const password = document.getElementById('actPassword').value;
+      const confirmPassword = document.getElementById('actConfirmPassword').value;
+      const btn = document.getElementById('btnCompleteActivation');
+
+      if (!password || password.length < 8) {
+        showAlert('Password must be at least 8 characters long.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showAlert('Passwords do not match. Please verify.');
+        return;
+      }
+
+      if (!currentPhotoFile) {
+        showAlert('Please upload your profile photo.');
+        return;
+      }
+
+      if (currentPhotoFile.size > MAX_SIZE_BYTES) {
+        showAlert(`Your photo is ${(currentPhotoFile.size / 1024).toFixed(1)} KB. Please compress it to under 50 KB before submitting.`);
+        return;
+      }
+
+      const consent = document.getElementById('consentCheckbox').checked;
+      if (!consent) {
+        showAlert('Please acknowledge the Examination Data Privacy Notice and check the consent box.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Activating account...';
+
+      const formData = new FormData();
+      formData.append('email', currentActivationEmail);
+      formData.append('otp', currentOtp);
+      formData.append('password', password);
+      formData.append('confirmPassword', confirmPassword);
+      formData.append('consent', 'true');
+      formData.append('photo', currentPhotoFile);
+
+      try {
+        const res = await fetch('/api/auth/student/complete-activation', {
           method: 'POST',
           body: formData,
         });
+
         const data = await res.json();
 
         if (res.ok) {
-          showAlert('Account created successfully! You can now login.', 'success');
+          showAlert('Account activated successfully! Redirecting to your dashboard...', 'success');
           setTimeout(() => {
-            document.getElementById('tab-login-btn').click();
-          }, 2000);
+            window.location.href = data.redirectUrl || '/student/dashboard';
+          }, 1200);
         } else {
-          showAlert(data.error || 'Registration failed.');
+          showAlert(data.error || 'Failed to complete activation.');
+          btn.disabled = false;
+          btn.innerHTML = '<span>Complete Activation & Sign In</span><i class="fas fa-check-circle"></i>';
         }
       } catch (err) {
-        showAlert('Network error. Please try again.');
-      } finally {
+        showAlert('Network error completing activation.');
         btn.disabled = false;
-        btn.innerHTML = 'Create Account';
+        btn.innerHTML = '<span>Complete Activation & Sign In</span><i class="fas fa-check-circle"></i>';
       }
     });
   </script>

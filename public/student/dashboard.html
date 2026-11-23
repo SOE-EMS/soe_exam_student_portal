@@ -268,6 +268,16 @@
   <script>
     const alertContainer = document.getElementById('alert-container');
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function showAlert(msg, type = 'danger') {
       alertContainer.innerHTML = `<div class="alert alert-${type} mb-3">${msg}</div>`;
       setTimeout(() => { alertContainer.innerHTML = ''; }, 5000);
@@ -343,8 +353,8 @@
           return `<div class="exam-card">
             <div class="exam-header">
               <div>
-                <div class="exam-name">${exam.examName}</div>
-                <div class="exam-ay">${exam.academicYear}</div>
+                <div class="exam-name">${escapeHtml(exam.examName)}</div>
+                <div class="exam-ay">${escapeHtml(exam.academicYear)}</div>
               </div>
               <span class="badge-eligible ${statusClass}${overrideClass}">${statusLabel}</span>
             </div>

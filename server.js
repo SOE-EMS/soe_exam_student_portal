@@ -42,6 +42,39 @@ app.use('/api/', apiRateLimiter());
 // Sessions
 app.use(sessionMiddleware());
 
+// Prevent direct unauthenticated static access to protected admin and student HTML files
+app.use((req, res, next) => {
+  const normalizedPath = req.path.toLowerCase();
+
+  // If requesting an admin HTML page directly
+  if (normalizedPath.startsWith('/admin/') && normalizedPath.endsWith('.html')) {
+    const page = normalizedPath.replace(/^\/admin\//, '').replace(/\.html$/, '');
+    if (page !== 'login') {
+      if (!req.session || !req.session.userId) {
+        return res.redirect('/admin/login');
+      }
+      if (req.session.role !== 'ADMIN') {
+        return res.redirect('/student/dashboard');
+      }
+    }
+  }
+
+  // If requesting a student HTML page directly
+  if (normalizedPath.startsWith('/student/') && normalizedPath.endsWith('.html')) {
+    const page = normalizedPath.replace(/^\/student\//, '').replace(/\.html$/, '');
+    if (page !== 'login') {
+      if (!req.session || !req.session.userId) {
+        return res.redirect('/student/login');
+      }
+      if (req.session.role === 'ADMIN') {
+        return res.redirect('/admin/dashboard');
+      }
+    }
+  }
+
+  next();
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -85,27 +118,64 @@ app.use('/api/block-report', require('./src/routes/blockReport.routes'));
 app.use('/api/audit', require('./src/routes/audit.routes'));
 app.use('/api/subjects', require('./src/routes/subjectMaster.routes'));
 app.use('/api/eligible-analysis', require('./src/routes/eligibleAnalysis.routes'));
+
 // ──────────────────────────────────────────────
-// PAGE ROUTES
+// PAGE ROUTES (Server-side Authentication & Role Guarding)
 // ──────────────────────────────────────────────
 
-// Root → Admin login
+// Root → Redirect based on session or show Admin login
 app.get('/', (req, res) => {
+  if (req.session && req.session.userId) {
+    if (req.session.role === 'ADMIN') return res.redirect('/admin/dashboard');
+    if (req.session.role === 'STUDENT') return res.redirect('/student/dashboard');
+  }
   res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html'));
 });
 
-// Admin pages
+// Admin pages with server-side authentication & authorization
 app.get('/admin/:page', (req, res) => {
-  const page = req.params.page || 'login';
+  const page = (req.params.page || 'login').replace(/\.html$/, '');
+
+  if (page === 'login') {
+    if (req.session && req.session.userId && req.session.role === 'ADMIN') {
+      return res.redirect('/admin/dashboard');
+    }
+    return res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html'));
+  }
+
+  // Protected Admin pages
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/admin/login');
+  }
+  if (req.session.role !== 'ADMIN') {
+    return res.redirect('/student/dashboard');
+  }
+
   const filePath = path.join(__dirname, 'public', 'admin', `${page}.html`);
   res.sendFile(filePath, (err) => {
     if (err) res.status(404).send('Page not found');
   });
 });
 
-// Student pages
+// Student pages with server-side authentication & authorization
 app.get('/student/:page', (req, res) => {
-  const page = req.params.page || 'login';
+  const page = (req.params.page || 'login').replace(/\.html$/, '');
+
+  if (page === 'login') {
+    if (req.session && req.session.userId && req.session.role === 'STUDENT') {
+      return res.redirect('/student/dashboard');
+    }
+    return res.sendFile(path.join(__dirname, 'public', 'student', 'login.html'));
+  }
+
+  // Protected Student pages
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/student/login');
+  }
+  if (req.session.role !== 'STUDENT') {
+    return res.redirect('/admin/dashboard');
+  }
+
   const filePath = path.join(__dirname, 'public', 'student', `${page}.html`);
   res.sendFile(filePath, (err) => {
     if (err) res.status(404).send('Page not found');
